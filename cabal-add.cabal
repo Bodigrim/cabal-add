@@ -1,0 +1,64 @@
+cabal-version:   3.0
+name:            cabal-add
+version:         0.1
+license:         BSD-3-Clause
+license-file:    LICENSE
+maintainer:      andrew.lelechenko@gmail.com
+author:          Bodigrim
+tested-with:     ghc ==9.8.1 ghc ==9.6.3 ghc ==9.4.7 ghc ==9.2.8
+synopsis:        Extend build-depends from the command line
+description:
+    Extend build-depends from the command line.
+    Allows to specify Cabal file, target component
+    and multiple dependencies with version bounds.
+
+category:        Development
+build-type:      Simple
+extra-doc-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+    type:     git
+    location: https://github.com/Bodigrim/cabal-add.git
+
+library
+    exposed-modules:  Distribution.Client.Add
+    hs-source-dirs:   src
+    default-language: GHC2021
+    ghc-options:      -Wall
+    build-depends:
+        base <5,
+        bytestring <0.13,
+        Cabal-syntax >=3.8 && <3.11,
+        containers <0.8
+
+executable cabal-add
+    main-is:          Main.hs
+    hs-source-dirs:   app
+    default-language: GHC2021
+    ghc-options:      -Wall
+    build-depends:
+        base <5,
+        bytestring <0.13,
+        cabal-add,
+        Cabal-syntax >=3.8 && <3.11,
+        directory <1.4,
+        optparse-applicative >=0.16 && <0.19,
+        process <1.7
+
+test-suite cabal-add-tests
+    type:               exitcode-stdio-1.0
+    main-is:            Main.hs
+    build-tool-depends: cabal-add:cabal-add
+    hs-source-dirs:     tests
+    default-language:   GHC2021
+    ghc-options:        -Wall
+    build-depends:
+        base,
+        Diff >=0.2,
+        directory,
+        process,
+        string-qq,
+        tasty,
+        temporary
