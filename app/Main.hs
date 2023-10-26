@@ -2,13 +2,14 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Copyright:   (c) 2023 Bodigrim
 -- License:     BSD-3-Clause
 module Main (main) where
 
-import Control.Monad
+import Control.Monad (filterM, unless)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.List qualified as L
@@ -21,22 +22,21 @@ import System.Directory
 import System.Exit
 
 data RawConfig = RawConfig
-  { rcnfCabalFile :: !FilePath
+  { rcnfMCabalFile :: !(Maybe FilePath)
   , rcnfComponent :: !(Maybe String)
   , rcnfDependencies :: !(NonEmpty String)
   }
   deriving (Show)
 
-parseRawConfig :: Maybe FilePath -> Parser RawConfig
-parseRawConfig defaultCabalFile = do
-  rcnfCabalFile <-
-    strOption $
-      long "cabal-file"
-        <> short 'f'
-        <> metavar "FILE"
-        <> showDefault
-        <> maybe mempty value defaultCabalFile
-        <> help "Cabal file to edit in place."
+parseRawConfig :: Parser RawConfig
+parseRawConfig = do
+  rcnfMCabalFile <-
+    optional $
+      strOption $
+        long "cabal-file"
+          <> short 'f'
+          <> metavar "FILE"
+          <> help "Cabal file to edit in place (tries to detect cabal file in current folder if omitted)."
   rcnfComponent <-
     optional $
       strOption $
@@ -51,36 +51,46 @@ parseRawConfig defaultCabalFile = do
           <> help "Package(s) to add to build-depends section. Version bounds can be provided as well, use quotes to escape comparisons from your shell. E. g., 'foo < 0.2'."
   pure RawConfig {..}
 
-resolveCabalFileInCurrentFolder :: IO (Maybe FilePath)
+resolveCabalFileInCurrentFolder :: IO (Either String FilePath)
 resolveCabalFileInCurrentFolder = do
   files <- listDirectory "."
-  let cabalFiles = filter (".cabal" `L.isSuffixOf`) files
+
+  -- filter in two steps to reduce IO
+  let cabalFiles' = filter (".cabal" `L.isSuffixOf`) files
+  -- make sure we don't catch directories
+  cabalFiles <- filterM doesFileExist cabalFiles'
+
   pure $ case cabalFiles of
-    [fn] -> Just fn
-    _ -> Nothing
+    [fn] -> Right fn
+    (_:_) -> Left "Found multiple cabal files in current folder. Giving up."
+    _ -> Left "Found no cabal files in current folder. Giving up."
 
 readCabalFile :: FilePath -> IO ByteString
 readCabalFile fileName = do
   cabalFileExists <- doesFileExist fileName
   unless cabalFileExists $
     die $
-      fileName ++ " does not exist"
+      fileName ++ " does not exist or is not a file"
   snd . patchQuirks <$> B.readFile fileName
 
 main :: IO ()
 main = do
-  defaultCabalFile <- resolveCabalFileInCurrentFolder
   RawConfig {..} <-
     execParser $
       info
-        (parseRawConfig defaultCabalFile <**> helper)
+        (parseRawConfig <**> helper)
         (fullDesc <> progDesc "Extend build-depends from the command line")
 
-  cnfOrigContents <- readCabalFile rcnfCabalFile
+  (cnfOrigContents, cabalFile) <- case rcnfMCabalFile of
+    Just rcnfCabalFile -> (, rcnfCabalFile) <$> readCabalFile rcnfCabalFile
+    Nothing -> do
+      resolveCabalFileInCurrentFolder >>= \case
+        Left e -> die e
+        Right defaultCabalFile -> (, defaultCabalFile) <$> readCabalFile defaultCabalFile
 
   let inputs = do
-        (fields, packDescr) <- parseCabalFile rcnfCabalFile cnfOrigContents
-        cmp <- resolveComponent rcnfCabalFile (fields, packDescr) rcnfComponent
+        (fields, packDescr) <- parseCabalFile cabalFile cnfOrigContents
+        cmp <- resolveComponent cabalFile (fields, packDescr) rcnfComponent
         deps <- traverse validateDependency rcnfDependencies
         pure (fields, packDescr, cmp, deps)
 
@@ -92,6 +102,6 @@ main = do
     Nothing ->
       die $
         "Cannot extend build-depends in "
-          ++ rcnfCabalFile
+          ++ cabalFile
           ++ ", please report as a bug at https://github.com/Bodigrim/cabal-add/issues"
-    Just r -> B.writeFile rcnfCabalFile r
+    Just r -> B.writeFile cabalFile r
