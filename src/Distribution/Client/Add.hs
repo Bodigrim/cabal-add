@@ -20,9 +20,11 @@ module Distribution.Client.Add (
   validateChanges,
 ) where
 
+import Control.Monad (forM, foldM)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Char
+import qualified Data.Foldable1 as F1
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -48,7 +50,7 @@ data Config = Config
   , cnfFields :: ![Field Position]
   -- ^ Parsed (by 'readFields') representation of the Cabal file,
   -- must be in sync with 'cnfOrigContents'.
-  , cnfComponent :: !(Either CommonStanza ComponentName)
+  , cnfComponents :: !(NonEmpty (Either CommonStanza ComponentName))
   -- ^ Which component to update?
   , cnfDependencies :: !(NonEmpty ByteString)
   -- ^ Which dependencies to add?
@@ -332,7 +334,8 @@ dropRepeatingSpaces xs = case B.uncons xs of
 -- to preserve formatting. This often breaks however
 -- if there are comments in between build-depends.
 fancyAlgorithm :: Config -> Maybe ByteString
-fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
+fancyAlgorithm Config {cnfFields, cnfComponents, cnfOrigContents, cnfDependencies} = Nothing
+{--
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
   buildDependsField <- L.find isBuildDependsField subFields
@@ -373,48 +376,77 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
 
   let ret = beforeFirstDep <> newBuildDeps <> afterFirstDep
   pure ret
+--}
 
 -- | Find build-depends section and insert new
 -- dependencies at the beginning. Very limited effort
 -- is put into preserving formatting.
 niceAlgorithm :: Config -> Maybe ByteString
-niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
-  component <- L.find (isComponent cnfComponent) cnfFields
-  Section _ _ subFields <- pure component
-  buildDependsField <- L.find isBuildDependsField subFields
-  Field _ (FieldLine pos _dep : _) <- pure buildDependsField
+niceAlgorithm Config {cnfFields, cnfComponents, cnfOrigContents, cnfDependencies} = do
+  positions <- L.sortOn (\(Field _ (FieldLine (Position line _) _ : _)) -> line) <$> forM (NE.toList cnfComponents) getField
+  Just (insertBuildDeps positions)
 
-  let (before, after) = splitAtPosition pos cnfOrigContents
-      (_, buildDepsHeader) = splitAtPosition (getFieldNameAnn buildDependsField) before
-      filler = dropRepeatingSpaces $ B.drop 1 $ B.dropWhile (/= ':') buildDepsHeader
-      leadingCommaStyle = detectLeadingComma after
-      filler' = maybe ("," <> filler) (filler <>) leadingCommaStyle
-      newBuildDeps =
-        fromMaybe "" leadingCommaStyle
-          <> B.intercalate filler' (NE.toList cnfDependencies)
-          <> (if isJust leadingCommaStyle then filler else filler')
-  pure $
-    before <> newBuildDeps <> after
+ where
+  insertBuildDeps :: [Field Position] -> ByteString
+  insertBuildDeps = go 0 0 cnfOrigContents
+   where
+    go :: Int -> Int -> ByteString -> [Field Position] -> ByteString
+    go _ _ content [] = content
+    go offset rowOffset content (buildDependsField@(Field _ (FieldLine pos@(Position line row) _dep : _)):rest) =
+      let (before, after) = splitAtPosition pos content
+          (_, buildDepsHeader) = splitAtPosition (Position (line - offset) (row - rowOffset)) before
+          filler = dropRepeatingSpaces $ B.drop 1 $ B.dropWhile (/= ':') buildDepsHeader
+          leadingCommaStyle = detectLeadingComma after
+          filler' = maybe ("," <> filler) (filler <>) leadingCommaStyle
+          newBuildDeps =
+            fromMaybe "" leadingCommaStyle
+              <> B.intercalate filler' (NE.toList cnfDependencies)
+              <> (if isJust leadingCommaStyle then filler else filler')
+          insertLen = (length . B.lines) before + (length . B.lines) newBuildDeps - 1
+      in before <> newBuildDeps <> go (offset + insertLen) row after rest
+    go _ _ _ _ = error "Internal error"
+
+  getField :: Either CommonStanza ComponentName -> Maybe (Field Position)
+  getField cnfComponent = do
+    component <- L.find (isComponent cnfComponent) cnfFields
+    Section _ _ subFields <- pure component
+    buildDependsField <- L.find isBuildDependsField subFields
+    p@(Field _ (FieldLine _ _ : _)) <- pure buildDependsField
+    pure p
+
 
 -- | Introduce a new build-depends section
 -- after the last common stanza import.
 -- This is not fancy, but very robust.
 roughAlgorithm :: Config -> Maybe ByteString
-roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
-  let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
-  pos@(Position _ row) <- findNonImportField componentAndRest
-  let (before, after) = splitAtPositionLine pos cnfOrigContents
-      lineEnding' = B.takeWhileEnd isSpace before
-      lineEnding = if B.null lineEnding' then "\n" else lineEnding'
-      needsNewlineBefore = maybe False ((/= '\n') . snd) (B.unsnoc before)
-      buildDeps =
-        (if needsNewlineBefore then lineEnding else "")
-          <> B.replicate (row - 1) ' '
-          <> "build-depends: "
-          <> B.intercalate ", " (NE.toList cnfDependencies)
-          <> lineEnding
-  pure $
-    before <> buildDeps <> after
+roughAlgorithm Config {cnfFields, cnfComponents, cnfOrigContents, cnfDependencies} = do
+  positions <- L.sortOn (\(Position line _) -> line) <$> forM (NE.toList cnfComponents) getPos
+  Just (insertBuildDeps positions)
+ where
+  insertBuildDeps :: [Position] -> ByteString
+  insertBuildDeps = go 0 cnfOrigContents
+   where
+    go :: Int -> ByteString -> [Position] -> ByteString
+    go _ content [] = content
+    go offset content (Position line row:rest) =
+      let (before, after) = splitAtPositionLine (Position (line - offset) row) content
+          lineEnding' = B.takeWhileEnd isSpace before
+          lineEnding = if B.null lineEnding' then "\n" else lineEnding'
+          needsNewlineBefore = maybe False ((/= '\n') . snd) (B.unsnoc before)
+          buildDeps =
+            (if needsNewlineBefore then lineEnding else "")
+              <> B.replicate (row - 1) ' '
+              <> "build-depends: "
+              <> B.intercalate ", " (NE.toList cnfDependencies)
+              <> lineEnding
+          insertLen = (length . B.lines) before + (length . B.lines) buildDeps -1
+      in before <> buildDeps <> go (offset + insertLen) after rest
+
+  getPos :: Either CommonStanza ComponentName -> Maybe Position
+  getPos cnfComponent = do
+    let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
+    findNonImportField componentAndRest
+
 
 -- | Main work horse of the module, adding dependencies to a specified component
 -- in the Cabal file.
@@ -425,9 +457,9 @@ executeConfig
   -- ^ Input arguments.
   -> Maybe ByteString
   -- ^ Updated contents, if validated successfully.
-executeConfig validator cnf@Config {cnfComponent} =
-  L.find (validator cnfComponent) $
-    mapMaybe ($ cnf) [fancyAlgorithm, niceAlgorithm, roughAlgorithm]
+executeConfig validator cnf@Config {cnfComponents} =
+  L.find (\bs -> and ((\cnfComponent -> validator cnfComponent bs) <$> cnfComponents)) $
+    mapMaybe ($ cnf) [niceAlgorithm]
 
 -- | Validate that updates did not cause unexpected effects on other sections
 -- of the Cabal file.
