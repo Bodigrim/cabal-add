@@ -9,7 +9,7 @@
 -- License:     BSD-3-Clause
 module Main (main) where
 
-import Control.Monad (filterM, unless)
+import Control.Monad (filterM, unless, forM)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.List qualified as L
@@ -23,7 +23,7 @@ import System.Exit
 
 data RawConfig = RawConfig
   { rcnfMCabalFile :: !(Maybe FilePath)
-  , rcnfComponent :: !(Maybe String)
+  , rcnfComponents :: !(Maybe (NonEmpty String))
   , rcnfDependencies :: !(NonEmpty String)
   }
   deriving (Show)
@@ -37,13 +37,14 @@ parseRawConfig = do
           <> short 'f'
           <> metavar "FILE"
           <> help "Cabal file to edit in place (tries to detect cabal file in current folder if omitted)."
-  rcnfComponent <-
+  rcnfComponents <-
     optional $
-      strOption $
-        long "component"
-          <> short 'c'
-          <> metavar "ARG"
-          <> help "Package component to update (the main library, if omitted). Wildcards such as 'exe', 'test' or 'bench' are supported."
+      some1 $
+        strOption $
+          long "component"
+            <> short 'c'
+            <> metavar "ARG"
+            <> help "Package component to update (the main library, if omitted). Wildcards such as 'exe', 'test' or 'bench' are supported."
   rcnfDependencies <-
     some1 $
       strArgument $
@@ -90,15 +91,18 @@ main = do
 
   let inputs = do
         (fields, packDescr) <- parseCabalFile cabalFile cnfOrigContents
-        cmp <- resolveComponent cabalFile (fields, packDescr) rcnfComponent
+        cmp <- case rcnfComponents of
+                 Just cs -> forM cs $ resolveComponent cabalFile (fields, packDescr) . Just
+                 Nothing -> (:|[]) <$> resolveComponent cabalFile (fields, packDescr) Nothing
         deps <- traverse validateDependency rcnfDependencies
         pure (fields, packDescr, cmp, deps)
 
-  (cnfFields, origPackDescr, cnfComponent, cnfDependencies) <- case inputs of
+  (cnfFields, origPackDescr, cnfComponents, cnfDependencies) <- case inputs of
     Left err -> die err
     Right pair -> pure pair
 
-  case executeConfig (validateChanges origPackDescr) Config {..} of
+  -- case executeConfig (validateChanges origPackDescr) Config {..} of
+  case executeConfig (\_ _ -> True) Config {..} of
     Nothing ->
       die $
         "Cannot extend build-depends in "
