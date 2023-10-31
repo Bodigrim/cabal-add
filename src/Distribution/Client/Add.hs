@@ -20,6 +20,7 @@ module Distribution.Client.Add (
   validateChanges,
 ) where
 
+import Control.Monad.Error.Class (MonadError, throwError)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Char
@@ -165,16 +166,17 @@ isSection = \case
 
 -- | Parse Cabal file into two representations.
 parseCabalFile
-  :: FilePath
+  :: MonadError String m
+  => FilePath
   -- ^ File name, just for error reporting.
   -> ByteString
   -- ^ Contents of the Cabal file.
-  -> Either String ([Field Position], GenericPackageDescription)
-  -- ^ Either error or parsed data.
+  -> m ([Field Position], GenericPackageDescription)
+  -- ^ Parsed data.
 parseCabalFile fileName contents = do
   let legacyErr = "Legacy, unsectioned Cabal files are unsupported"
       errorWithCtx msg =
-        Left $
+        throwError $
           "Cannot parse input Cabal file "
             ++ fileName
             ++ " because:\n"
@@ -197,19 +199,20 @@ parseCabalFile fileName contents = do
 
 -- | Resolve a raw component name.
 resolveComponent
-  :: FilePath
+  :: MonadError String m
+  => FilePath
   -- ^ File name, just for error reporting.
   -> ([Field Position], GenericPackageDescription)
   -- ^ Parsed Cabal file, as returned by 'parseCabalFile'.
   -> Maybe String
   -- ^ Component name (default component if 'Nothing').
-  -> Either String (Either CommonStanza ComponentName)
-  -- ^ Either error or resolved component.
+  -> m (Either CommonStanza ComponentName)
+  -- ^ Resolved component.
 resolveComponent
   fileName
   (extractCommonStanzas -> commonStanzas, extractComponentNames -> componentNames)
   component = case resolution of
-    NotFound -> Left $ case component of
+    NotFound -> throwError $ case component of
       Nothing ->
         "Default target component not found in "
           ++ fileName
@@ -224,7 +227,7 @@ resolveComponent
           ++ knownTargetsHint
     Resolved cmp -> pure cmp
     Ambiguous ->
-      Left $
+      throwError $
         "Target component is ambiguous.\n"
           ++ knownTargetsHint
     where
@@ -242,14 +245,15 @@ resolveComponent
 
 -- | Validate dependency syntax.
 validateDependency
-  :: String
-  -- ^ Raw dependency to add
-  -> Either String ByteString
-  -- ^ Either error or dependency as 'ByteString'.
+  :: MonadError String m
+  => String
+  -- ^ Raw dependency to add.
+  -> m ByteString
+  -- ^ Dependency as 'ByteString'.
 validateDependency d = case eitherParsec d of
   Right (_ :: Dependency) -> pure $ B.pack d
   Left err ->
-    Left $
+    throwError $
       "Cannot parse the specified dependency '"
         ++ d
         ++ "' because:\n"

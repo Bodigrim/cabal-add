@@ -31,7 +31,8 @@ library
         base <5,
         bytestring <0.13,
         Cabal-syntax >=3.8 && <3.11,
-        containers <0.8
+        containers <0.8,
+        mtl <2.4
 
 executable cabal-add
     main-is:          Main.hs
