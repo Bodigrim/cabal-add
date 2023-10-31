@@ -1,8 +1,8 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
 
 -- |
 -- Copyright:   (c) 2023 Bodigrim
@@ -61,9 +61,12 @@ resolveCabalFileInCurrentFolder = do
   cabalFiles <- filterM doesFileExist cabalFiles'
 
   pure $ case cabalFiles of
-    [fn] -> Right fn
-    (_:_) -> Left "Found multiple cabal files in current folder. Giving up."
-    _ -> Left "Found no cabal files in current folder. Giving up."
+    [] ->
+      Left "Found no cabal files in current folder. Giving up."
+    [fn] ->
+      Right fn
+    _ : _ : _ ->
+      Left "Found multiple cabal files in current folder. Giving up."
 
 readCabalFile :: FilePath -> IO ByteString
 readCabalFile fileName = do
@@ -82,11 +85,11 @@ main = do
         (fullDesc <> progDesc "Extend build-depends from the command line")
 
   (cnfOrigContents, cabalFile) <- case rcnfMCabalFile of
-    Just rcnfCabalFile -> (, rcnfCabalFile) <$> readCabalFile rcnfCabalFile
+    Just rcnfCabalFile -> (,rcnfCabalFile) <$> readCabalFile rcnfCabalFile
     Nothing -> do
       resolveCabalFileInCurrentFolder >>= \case
         Left e -> die e
-        Right defaultCabalFile -> (, defaultCabalFile) <$> readCabalFile defaultCabalFile
+        Right defaultCabalFile -> (,defaultCabalFile) <$> readCabalFile defaultCabalFile
 
   let inputs = do
         (fields, packDescr) <- parseCabalFile cabalFile cnfOrigContents
