@@ -57,7 +57,7 @@ test-suite cabal-add-tests
     ghc-options:        -Wall
     build-depends:
         base,
-        Diff >=0.2,
+        Diff >=0.4,
         directory,
         process,
         string-qq,

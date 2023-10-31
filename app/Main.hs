@@ -15,11 +15,25 @@ import Data.ByteString.Char8 qualified as B
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Distribution.Client.Add
-import Distribution.PackageDescription.Quirks
-import Options.Applicative
+import Distribution.PackageDescription.Quirks (patchQuirks)
+import Options.Applicative (
+  Parser,
+  execParser,
+  fullDesc,
+  help,
+  helper,
+  info,
+  long,
+  metavar,
+  optional,
+  progDesc,
+  short,
+  strArgument,
+  strOption,
+ )
 import Options.Applicative.NonEmpty (some1)
-import System.Directory
-import System.Exit
+import System.Directory (doesFileExist, listDirectory)
+import System.Exit (die)
 
 data RawConfig = RawConfig
   { rcnfMCabalFile :: !(Maybe FilePath)
@@ -81,7 +95,7 @@ main = do
   RawConfig {..} <-
     execParser $
       info
-        (parseRawConfig <**> helper)
+        (helper <*> parseRawConfig)
         (fullDesc <> progDesc "Extend build-depends from the command line")
 
   (cnfOrigContents, cabalFile) <- case rcnfMCabalFile of

@@ -7,17 +7,17 @@
 -- License:     BSD-3-Clause
 module Main (main) where
 
-import Data.Algorithm.Diff
-import Data.Char
-import Data.Maybe
-import Data.String.QQ
-import System.Directory
-import System.Exit
-import System.IO
-import System.IO.Temp
-import System.Process
-import Test.Tasty
-import Test.Tasty.Providers
+import Data.Algorithm.Diff (Diff, PolyDiff (..), getDiff)
+import Data.Char (isAlpha)
+import Data.Maybe (mapMaybe)
+import Data.String.QQ (s)
+import System.Directory (findExecutable)
+import System.Exit (ExitCode (..))
+import System.IO (hClose)
+import System.IO.Temp (withSystemTempFile)
+import System.Process (readProcessWithExitCode)
+import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.Providers (IsTest (..), singleTest, testFailed, testPassed)
 
 data CabalAddTest = CabalAddTest
   { catName :: String
@@ -55,7 +55,6 @@ prettyDiff =
           First xs -> Just $ '-' : xs
           Second ys -> Just $ '+' : ys
           Both xs _ -> Just $ ' ' : xs
-          -- Both {} -> Nothing
       )
 
 mkTest :: CabalAddTest -> TestTree

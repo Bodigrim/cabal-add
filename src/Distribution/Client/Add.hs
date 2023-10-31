@@ -23,18 +23,37 @@ module Distribution.Client.Add (
 import Control.Monad.Error.Class (MonadError, throwError)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
-import Data.Char
+import Data.ByteString.Internal (isSpaceChar8)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Distribution.CabalSpecVersion
-import Distribution.Fields
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Parsec
-import Distribution.Parsec
+import Distribution.CabalSpecVersion (CabalSpecVersion (CabalSpecV1_0))
+import Distribution.Fields (
+  Field (..),
+  FieldLine (..),
+  Name (..),
+  SectionArg (..),
+  readFields,
+ )
+import Distribution.PackageDescription (
+  ComponentName (..),
+  Dependency,
+  GenericPackageDescription (..),
+  LibraryName (..),
+  PackageDescription (..),
+  componentNameStanza,
+  componentNameString,
+  unUnqualComponentName,
+ )
+import Distribution.PackageDescription.Parsec (
+  parseGenericPackageDescription,
+  parseGenericPackageDescriptionMaybe,
+  runParseResult,
+ )
+import Distribution.Parsec (Position (..), eitherParsec, showPError)
 
 -- | Just a newtype wrapper, since @Cabal-syntax@ does not provide any.
 newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
@@ -347,7 +366,7 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
   let secondDepPos = case restDeps of
         FieldLine pos _dep : _ -> Just pos
         _ -> Nothing
-      fillerPred c = isSpace c || c == ','
+      fillerPred c = isSpaceChar8 c || c == ','
 
   let (B.takeWhileEnd fillerPred -> pref, B.takeWhile fillerPred -> suff) =
         splitAtPosition firstDepPos cnfOrigContents
@@ -408,7 +427,7 @@ roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
   let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
   pos@(Position _ row) <- findNonImportField componentAndRest
   let (before, after) = splitAtPositionLine pos cnfOrigContents
-      lineEnding' = B.takeWhileEnd isSpace before
+      lineEnding' = B.takeWhileEnd isSpaceChar8 before
       lineEnding = if B.null lineEnding' then "\n" else lineEnding'
       needsNewlineBefore = maybe False ((/= '\n') . snd) (B.unsnoc before)
       buildDeps =
