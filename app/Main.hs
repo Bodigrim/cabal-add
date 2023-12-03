@@ -50,7 +50,7 @@ parseRawConfig = do
         long "cabal-file"
           <> short 'f'
           <> metavar "FILE"
-          <> help "Cabal file to edit in place (tries to detect cabal file in current folder if omitted)."
+          <> help "Cabal file to edit in place (tries to detect Cabal file in current folder if omitted)."
   rcnfComponent <-
     optional $
       strOption $

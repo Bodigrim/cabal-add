@@ -11,6 +11,9 @@ description:
     Extend build-depends from the command line.
     Allows to specify Cabal file, target component
     and multiple dependencies with version bounds.
+    It works on any sectioned Cabal file,
+    supports stanzas and conditional blocks,
+    and preserves original formatting.
 
 category:        Development
 build-type:      Simple
