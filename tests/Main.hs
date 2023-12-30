@@ -13,9 +13,8 @@ import Data.Maybe (mapMaybe)
 import Data.String.QQ (s)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode (..))
-import System.IO (hClose)
-import System.IO.Temp (withSystemTempFile)
-import System.Process (readProcessWithExitCode)
+import System.IO.Temp (withSystemTempDirectory)
+import System.Process (cwd, proc, readCreateProcessWithExitCode)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.Providers (IsTest (..), singleTest, testFailed, testPassed)
 
@@ -33,11 +32,12 @@ instance IsTest CabalAddTest where
     case mCabalAddExe of
       Nothing -> pure $ testFailed "cabal-add executable is not in PATH"
       Just cabalAddExe -> do
-        let catName' = map (\c -> if isAlpha c then c else '_') catName ++ ".cabal"
-        withSystemTempFile catName' $ \cabalFileName cabalFileHandle -> do
-          hClose cabalFileHandle
+        let template = map (\c -> if isAlpha c then c else '_') catName
+        withSystemTempDirectory template $ \tempDir -> do
+          let cabalFileName = tempDir ++ "/" ++ template ++ ".cabal"
           writeFile cabalFileName catInput
-          (code, _out, err) <- readProcessWithExitCode cabalAddExe ("-f" : cabalFileName : catArgs) ""
+          let crpr = (proc cabalAddExe catArgs) {cwd = Just tempDir}
+          (code, _out, err) <- readCreateProcessWithExitCode crpr ""
           case code of
             ExitFailure {} -> pure $ testFailed err
             ExitSuccess -> do
@@ -1275,6 +1275,62 @@ executable dagda
 |]
       }
 
+caseIgnoreAddArgument :: TestTree
+caseIgnoreAddArgument =
+  mkTest $
+    CabalAddTest
+      { catName = "ignore add as the first command-line argument"
+      , catArgs = ["add", "baz ^>= 2.0", "quux < 1"]
+      , catInput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   magda, base
+|]
+      , catOutput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   baz ^>= 2.0, quux < 1, magda, base
+|]
+      }
+
+caseDoNotIgnoreAddArgument :: TestTree
+caseDoNotIgnoreAddArgument =
+  mkTest $
+    CabalAddTest
+      { catName = "do not ignore add as the second command-line argument"
+      , catArgs = ["baz ^>= 2.0", "add", "quux < 1"]
+      , catInput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   magda, base
+|]
+      , catOutput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   baz ^>= 2.0, add, quux < 1, magda, base
+|]
+      }
+
 main :: IO ()
 main =
   defaultMain $
@@ -1316,4 +1372,6 @@ main =
       , caseCommentsWithCommas
       , caseCommentsWithoutCommas
       , caseDependenciesOnTheSameLine
+      , caseIgnoreAddArgument
+      , caseDoNotIgnoreAddArgument
       ]
