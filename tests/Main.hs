@@ -1275,6 +1275,34 @@ executable dagda
 |]
       }
 
+caseDoNotIgnoreAddArgument :: TestTree
+caseDoNotIgnoreAddArgument =
+  mkTest $
+    CabalAddTest
+      { catName = "do not ignore add as the second command-line argument"
+      , catArgs = ["baz ^>= 2.0", "add", "quux < 1"]
+      , catInput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   magda, base
+|]
+      , catOutput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   baz ^>= 2.0, add, quux < 1, magda, base
+|]
+      }
+
 main :: IO ()
 main =
   defaultMain $
@@ -1316,4 +1344,5 @@ main =
       , caseCommentsWithCommas
       , caseCommentsWithoutCommas
       , caseDependenciesOnTheSameLine
+      , caseDoNotIgnoreAddArgument
       ]

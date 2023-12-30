@@ -33,6 +33,7 @@ import Options.Applicative (
  )
 import Options.Applicative.NonEmpty (some1)
 import System.Directory (doesFileExist, listDirectory)
+import System.Environment (getArgs, withArgs)
 import System.Exit (die)
 
 data RawConfig = RawConfig
@@ -90,13 +91,19 @@ readCabalFile fileName = do
       fileName ++ " does not exist or is not a file"
   snd . patchQuirks <$> B.readFile fileName
 
+stripAdd :: [String] -> [String]
+stripAdd ("add" : xs) = xs
+stripAdd xs = xs
+
 main :: IO ()
 main = do
+  rawArgs <- getArgs
   RawConfig {..} <-
-    execParser $
-      info
-        (helper <*> parseRawConfig)
-        (fullDesc <> progDesc "Extend build-depends from the command line")
+    withArgs (stripAdd rawArgs) $
+      execParser $
+        info
+          (helper <*> parseRawConfig)
+          (fullDesc <> progDesc "Extend build-depends from the command line")
 
   (cnfOrigContents, cabalFile) <- case rcnfMCabalFile of
     Just rcnfCabalFile -> (,rcnfCabalFile) <$> readCabalFile rcnfCabalFile
