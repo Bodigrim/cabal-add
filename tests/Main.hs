@@ -830,7 +830,7 @@ caseLeadingComma1 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -841,7 +841,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -862,7 +862,7 @@ caseLeadingComma2 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -872,7 +872,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -890,7 +890,7 @@ caseLeadingComma3 =
       , catArgs = ["baz ^>= 2.0", "quux > 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -901,7 +901,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -922,7 +922,7 @@ caseConditionalBuildDepends =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -934,7 +934,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -955,7 +955,7 @@ caseEmptyComponent1 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -967,7 +967,7 @@ executable bar
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -989,7 +989,7 @@ caseEmptyComponent2 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -998,7 +998,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1016,7 +1016,7 @@ caseEmptyComponent3 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1024,7 +1024,7 @@ build-type:    Simple
 library|]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1042,7 +1042,7 @@ caseEmptyBuildDepends =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1052,7 +1052,7 @@ library
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1071,7 +1071,7 @@ caseComponentInBraces =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1082,7 +1082,7 @@ Library {
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1101,7 +1101,7 @@ caseCommentsWithCommas =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1115,7 +1115,7 @@ executable dagda
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1137,7 +1137,7 @@ caseCommentsWithoutCommas =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1150,7 +1150,7 @@ executable dagda
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1171,7 +1171,7 @@ caseDependenciesOnTheSameLine =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catInput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
@@ -1181,7 +1181,7 @@ executable dagda
 |]
       , catOutput =
           [s|
-cabal-version: 3.8
+cabal-version: 3.6
 name:          dummy
 version:       0.1
 build-type:    Simple
