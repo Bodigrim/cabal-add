@@ -54,6 +54,8 @@ import Distribution.PackageDescription.Parsec (
   runParseResult,
  )
 import Distribution.Parsec (Position (..), eitherParsec, showPError)
+import Distribution.Simple.BuildTarget (readUserBuildTargets, resolveBuildTargets, BuildTarget (BuildTargetComponent))
+import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 
 -- | Just a newtype wrapper, since @Cabal-syntax@ does not provide any.
 newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
@@ -141,6 +143,14 @@ isCBenchName = \case
   CBenchName {} -> True
   _ -> False
 
+resolveDefaultComponentName :: Set ComponentName -> Maybe ComponentName
+resolveDefaultComponentName knownNames = case S.minView knownNames of
+  Just (knownName, rest)
+    | S.null rest -> Just knownName
+  _
+    | CLibName LMainLibName `elem` knownNames -> Just $ CLibName LMainLibName
+    | otherwise -> Nothing
+
 resolveToComponentName :: Set ComponentName -> Maybe String -> Resolution ComponentName
 resolveToComponentName knownNames = \case
   Nothing -> case S.minView knownNames of
@@ -173,10 +183,10 @@ specialComponents knownNames =
       Resolved {} -> Just xs
       _ -> Nothing
 
-resolveToCommonStanza :: Set CommonStanza -> Maybe String -> Resolution CommonStanza
-resolveToCommonStanza knownNames (Just (CommonStanza . B.pack -> name))
-  | S.member name knownNames = Resolved name
-resolveToCommonStanza _ _ = NotFound
+resolveToCommonStanza :: Set CommonStanza -> String -> Maybe CommonStanza
+resolveToCommonStanza knownNames (CommonStanza . B.pack -> name)
+  | S.member name knownNames = Just name
+resolveToCommonStanza _ _ = Nothing
 
 isSection :: Field ann -> Bool
 isSection = \case
@@ -216,6 +226,16 @@ parseCabalFile fileName contents = do
 
   pure (fields, packDescr)
 
+readBuildTarget :: PackageDescription -> String -> Maybe ComponentName
+readBuildTarget pkg targetStr = do
+  let (errs, utargets) = readUserBuildTargets [targetStr]
+  if not (null errs) then error $ show errs else do
+    [utarget] <- pure utargets
+    (errs2, btargets) <- pure $ resolveBuildTargets pkg [(utarget, False)]
+    if not (null errs2) then error $ show errs2 else do
+      [BuildTargetComponent btarget] <- pure btargets
+      pure btarget
+
 -- | Resolve a raw component name.
 resolveComponent
   :: MonadError String m
@@ -227,40 +247,36 @@ resolveComponent
   -- ^ Component name (default component if 'Nothing').
   -> m (Either CommonStanza ComponentName)
   -- ^ Resolved component.
-resolveComponent
-  fileName
-  (extractCommonStanzas -> commonStanzas, extractComponentNames -> componentNames)
-  component = case resolution of
-    NotFound -> throwError $ case component of
-      Nothing ->
-        "Default target component not found in "
-          ++ fileName
-          ++ ".\n"
-          ++ knownTargetsHint
-      Just cmp ->
-        "Target component '"
-          ++ cmp
-          ++ "' not found in "
-          ++ fileName
-          ++ ".\n"
-          ++ knownTargetsHint
-    Resolved cmp -> pure cmp
-    Ambiguous ->
-      throwError $
-        "Target component is ambiguous.\n"
-          ++ knownTargetsHint
-    where
-      allTargets =
-        S.fromList (mapMaybe (fmap unUnqualComponentName . componentNameString) (S.toList componentNames))
-          <> S.map (B.unpack . unCommonStanza) commonStanzas
-          <> specialComponents componentNames
-      knownTargetsHint =
-        "Specify one with -c: "
-          ++ L.intercalate ", " (S.toList allTargets)
-          ++ "."
-      resolution =
-        fmap Right (resolveToComponentName componentNames component)
-          <> fmap Left (resolveToCommonStanza commonStanzas component)
+resolveComponent fileName (fields, gpd) = \case
+  Nothing -> case resolveDefaultComponentName componentNames of
+    Just cmp -> pure (Right cmp)
+    Nothing -> throwError $
+          "Default target component not found in "
+            ++ fileName
+            ++ ".\n"
+            ++ knownTargetsHint
+  Just component -> case readBuildTarget (flattenPackageDescription gpd) component of
+    Just cmp -> pure (Right cmp)
+    Nothing -> case resolveToCommonStanza commonStanzas component of
+      Just cmp -> pure $ Left cmp
+      Nothing -> throwError $
+          "Target component '"
+            ++ component
+            ++ "' not found or is ambiguous in "
+            ++ fileName
+            ++ ".\n"
+            ++ knownTargetsHint
+  where
+    commonStanzas = extractCommonStanzas fields
+    componentNames = extractComponentNames gpd
+    allTargets =
+      S.fromList (mapMaybe (fmap unUnqualComponentName . componentNameString) (S.toList componentNames))
+        <> S.map (B.unpack . unCommonStanza) commonStanzas
+        <> specialComponents componentNames
+    knownTargetsHint =
+      "Specify one with -c: "
+        ++ L.intercalate ", " (S.toList allTargets)
+        ++ "."
 
 -- | Validate dependency syntax.
 validateDependency
