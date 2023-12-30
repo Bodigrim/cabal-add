@@ -1303,6 +1303,34 @@ executable dagda
 |]
       }
 
+caseSublibraryDependency :: TestTree
+caseSublibraryDependency =
+  mkTest $
+    CabalAddTest
+      { catName = "sublibrary as a dependency"
+      , catArgs = ["foo:bar"]
+      , catInput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   magda, base
+|]
+      , catOutput =
+          [s|
+cabal-version: 3.6
+name:          dummy
+version:       0.1
+build-type:    Simple
+
+executable dagda
+  build-depends:   foo:bar, magda, base
+|]
+      }
+
 main :: IO ()
 main =
   defaultMain $
@@ -1345,4 +1373,5 @@ main =
       , caseCommentsWithoutCommas
       , caseDependenciesOnTheSameLine
       , caseDoNotIgnoreAddArgument
+      , caseSublibraryDependency
       ]

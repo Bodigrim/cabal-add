@@ -30,7 +30,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
-import Distribution.CabalSpecVersion (CabalSpecVersion (CabalSpecV1_0))
+import Distribution.CabalSpecVersion (CabalSpecVersion (CabalSpecV1_0, CabalSpecV3_0))
 import Distribution.Fields (
   Field (..),
   FieldLine (..),
@@ -278,12 +278,20 @@ resolveComponent
 -- | Validate dependency syntax.
 validateDependency
   :: MonadError String m
-  => String
+  => CabalSpecVersion
+  -- ^ Specification version to adhere to.
+  -> String
   -- ^ Raw dependency to add.
   -> m ByteString
   -- ^ Dependency as 'ByteString'.
-validateDependency d = case eitherParsec d of
-  Right (_ :: Dependency) -> pure $ B.pack d
+validateDependency specVer d = case eitherParsec d of
+  Right (_ :: Dependency)
+    | specVer < CabalSpecV3_0 && elem ':' d ->
+        throwError $
+          "Cannot use the specified dependency '"
+            ++ d
+            ++ "' because cabal-version must be at least 3.0."
+    | otherwise -> pure $ B.pack d
   Left err ->
     throwError $
       "Cannot parse the specified dependency '"
