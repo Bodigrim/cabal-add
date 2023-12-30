@@ -25,6 +25,9 @@ source-repository head
     type:     git
     location: https://github.com/Bodigrim/cabal-add.git
 
+flag cabal-syntax
+    default: False
+
 library
     exposed-modules:  Distribution.Client.Add
     hs-source-dirs:   src
@@ -33,9 +36,19 @@ library
     build-depends:
         base <5,
         bytestring <0.13,
-        Cabal-syntax >=3.8 && <3.11,
+        Cabal >=3.6 && <3.11,
         containers <0.8,
         mtl <2.4
+
+    if flag(cabal-syntax)
+        build-depends:
+            Cabal-syntax >=3.8 && <3.11,
+            Cabal >=3.8
+
+    else
+        build-depends:
+            Cabal-syntax <3.7,
+            Cabal <3.7
 
 executable cabal-add
     main-is:          Main.hs
@@ -46,10 +59,15 @@ executable cabal-add
         base <5,
         bytestring <0.13,
         cabal-add,
-        Cabal-syntax >=3.8 && <3.11,
         directory <1.4,
         optparse-applicative >=0.16 && <0.19,
         process <1.7
+
+    if flag(cabal-syntax)
+        build-depends: Cabal-syntax >=3.8 && <3.11
+
+    else
+        build-depends: Cabal <3.7
 
 test-suite cabal-add-tests
     type:               exitcode-stdio-1.0

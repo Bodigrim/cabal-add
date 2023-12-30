@@ -48,12 +48,14 @@ import Distribution.PackageDescription (
   componentNameString,
   unUnqualComponentName,
  )
+import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec (
   parseGenericPackageDescription,
   parseGenericPackageDescriptionMaybe,
   runParseResult,
  )
 import Distribution.Parsec (Position (..), eitherParsec, showPError)
+import Distribution.Simple.BuildTarget (BuildTarget (BuildTargetComponent), readUserBuildTargets, resolveBuildTargets)
 
 -- | Just a newtype wrapper, since @Cabal-syntax@ does not provide any.
 newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
@@ -216,6 +218,14 @@ parseCabalFile fileName contents = do
 
   pure (fields, packDescr)
 
+readBuildTarget :: PackageDescription -> String -> Maybe ComponentName
+readBuildTarget pkg targetStr = do
+  let (_, utargets) = readUserBuildTargets [targetStr]
+  [utarget] <- pure utargets
+  let (_, btargets) = resolveBuildTargets pkg [(utarget, False)]
+  [BuildTargetComponent btarget] <- pure btargets
+  pure btarget
+
 -- | Resolve a raw component name.
 resolveComponent
   :: MonadError String m
@@ -227,6 +237,9 @@ resolveComponent
   -- ^ Component name (default component if 'Nothing').
   -> m (Either CommonStanza ComponentName)
   -- ^ Resolved component.
+resolveComponent _ (_, gpd) (Just component)
+  | Just cmp <- readBuildTarget (flattenPackageDescription gpd) component =
+      pure $ Right cmp
 resolveComponent
   fileName
   (extractCommonStanzas -> commonStanzas, extractComponentNames -> componentNames)

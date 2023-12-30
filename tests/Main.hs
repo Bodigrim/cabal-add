@@ -545,6 +545,90 @@ executable baz
 |]
       }
 
+caseTestTarget1 :: TestTree
+caseTestTarget1 =
+  mkTest $
+    CabalAddTest
+      { catName = "test target 1"
+      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catInput =
+          [s|
+name:          dummy
+version:       0.1.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+common baz
+  language: Haskell2010
+
+test-suite baz
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  build-depends:
+    base >=4.15 && <5
+|]
+      , catOutput =
+          [s|
+name:          dummy
+version:       0.1.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+common baz
+  language: Haskell2010
+
+test-suite baz
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  build-depends:
+    foo < 1 && >0.7,
+    quux < 1,
+    base >=4.15 && <5
+|]
+      }
+
+caseTestTarget2 :: TestTree
+caseTestTarget2 =
+  mkTest $
+    CabalAddTest
+      { catName = "test target 2"
+      , catArgs = ["-c", "test:baz", "foo < 1 && >0.7", "quux < 1"]
+      , catInput =
+          [s|
+name:          dummy
+version:       0.1.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+common baz
+  language: Haskell2010
+
+test-suite baz
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  build-depends:
+    base >=4.15 && <5
+|]
+      , catOutput =
+          [s|
+name:          dummy
+version:       0.1.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+common baz
+  language: Haskell2010
+
+test-suite baz
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  build-depends:
+    foo < 1 && >0.7,
+    quux < 1,
+    base >=4.15 && <5
+|]
+      }
+
 caseCommonStanzaTarget1 :: TestTree
 caseCommonStanzaTarget1 =
   mkTest $
@@ -1210,6 +1294,8 @@ main =
       , caseExecutableTarget2
       , caseExecutableTarget3
       , caseExecutableTarget4
+      , caseTestTarget1
+      , caseTestTarget2
       , caseCommonStanzaTarget1
       , caseCommonStanzaTarget2
       , caseTwoSpacesInStanza
