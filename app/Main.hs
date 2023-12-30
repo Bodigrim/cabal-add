@@ -15,6 +15,7 @@ import Data.ByteString.Char8 qualified as B
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Distribution.Client.Add
+import Distribution.PackageDescription (packageDescription, specVersion)
 import Distribution.PackageDescription.Quirks (patchQuirks)
 import Options.Applicative (
   Parser,
@@ -114,8 +115,9 @@ main = do
 
   let inputs = do
         (fields, packDescr) <- parseCabalFile cabalFile cnfOrigContents
+        let specVer = specVersion $ packageDescription packDescr
         cmp <- resolveComponent cabalFile (fields, packDescr) rcnfComponent
-        deps <- traverse validateDependency rcnfDependencies
+        deps <- traverse (validateDependency specVer) rcnfDependencies
         pure (fields, packDescr, cmp, deps)
 
   (cnfFields, origPackDescr, cnfComponent, cnfDependencies) <- case inputs of
