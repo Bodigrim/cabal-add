@@ -39,8 +39,7 @@ import System.Exit (die)
 
 data RawConfig = RawConfig
   { rcnfMCabalFile :: !(Maybe FilePath)
-  , rcnfComponent :: !(Maybe String)
-  , rcnfDependencies :: !(NonEmpty String)
+  , rcnfArgs :: !(NonEmpty String)
   }
   deriving (Show)
 
@@ -53,18 +52,11 @@ parseRawConfig = do
           <> short 'f'
           <> metavar "FILE"
           <> help "Cabal file to edit in place (tries to detect Cabal file in current folder if omitted)."
-  rcnfComponent <-
-    optional $
-      strOption $
-        long "component"
-          <> short 'c'
-          <> metavar "ARG"
-          <> help "Package component to update (the main library, if omitted). Wildcards such as 'exe', 'test' or 'bench' are supported."
-  rcnfDependencies <-
+  rcnfArgs <-
     some1 $
       strArgument $
-        metavar "DEP"
-          <> help "Package(s) to add to build-depends section. Version bounds can be provided as well, use quotes to escape comparisons from your shell. E. g., 'foo < 0.2'."
+        metavar "ARGS"
+          <> help "Optional package component (wildcards such as 'exe', 'test' or 'bench' are supported) to update, followed by a non-empty list of package(s) to add to 'build-depends' section. Version bounds can be provided as well, use quotes to escape comparisons from your shell. E. g., 'foo < 0.2'."
   pure RawConfig {..}
 
 resolveCabalFileInCurrentFolder :: IO (Either String FilePath)
@@ -116,8 +108,13 @@ main = do
   let inputs = do
         (fields, packDescr) <- parseCabalFile cabalFile cnfOrigContents
         let specVer = specVersion $ packageDescription packDescr
-        cmp <- resolveComponent cabalFile (fields, packDescr) rcnfComponent
-        deps <- traverse (validateDependency specVer) rcnfDependencies
+            mkCmp = resolveComponent cabalFile (fields, packDescr)
+            mkDeps = traverse (validateDependency specVer)
+        (cmp, deps) <- case rcnfArgs of
+          x :| (y : ys)
+            | Right c <- mkCmp (Just x) ->
+                (c,) <$> mkDeps (y :| ys)
+          _ -> (,) <$> mkCmp Nothing <*> mkDeps rcnfArgs
         pure (fields, packDescr, cmp, deps)
 
   (cnfFields, origPackDescr, cnfComponent, cnfDependencies) <- case inputs of
