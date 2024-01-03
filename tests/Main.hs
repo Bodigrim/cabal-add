@@ -368,7 +368,7 @@ caseSublibraryTarget2 =
   mkTest $
     CabalAddTest
       { catName = "sublibrary target 2"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -408,7 +408,7 @@ caseExecutableTarget1 =
   mkTest $
     CabalAddTest
       { catName = "executable target 1"
-      , catArgs = ["-c", "exe", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["exe", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -442,7 +442,7 @@ caseExecutableTarget2 =
   mkTest $
     CabalAddTest
       { catName = "executable target 2"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -476,7 +476,7 @@ caseExecutableTarget3 =
   mkTest $
     CabalAddTest
       { catName = "executable target 3"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -510,7 +510,7 @@ caseExecutableTarget4 =
   mkTest $
     CabalAddTest
       { catName = "executable target 4"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -550,7 +550,7 @@ caseTestTarget1 =
   mkTest $
     CabalAddTest
       { catName = "test target 1"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -592,7 +592,7 @@ caseTestTarget2 =
   mkTest $
     CabalAddTest
       { catName = "test target 2"
-      , catArgs = ["-c", "test:baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["test:baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -634,7 +634,7 @@ caseCommonStanzaTarget1 =
   mkTest $
     CabalAddTest
       { catName = "common stanza as a target 1"
-      , catArgs = ["-c", "foo", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -663,7 +663,7 @@ caseCommonStanzaTarget2 =
   mkTest $
     CabalAddTest
       { catName = "common stanza as a target 2"
-      , catArgs = ["-c", "foo", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -699,7 +699,7 @@ caseTwoSpacesInStanza =
   mkTest $
     CabalAddTest
       { catName = "two spaces in stanza"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -765,7 +765,7 @@ caseTitleCaseStanza2 =
   mkTest $
     CabalAddTest
       { catName = "title case in stanza 2"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -799,7 +799,7 @@ caseTitleCaseBuildDepends =
   mkTest $
     CabalAddTest
       { catName = "title case in build-depends"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -833,7 +833,7 @@ caseSharedComponentPrefixes =
   mkTest $
     CabalAddTest
       { catName = "shared component prefixes"
-      , catArgs = ["-c", "baz", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           [s|
 name:          dummy
@@ -877,7 +877,7 @@ windowsLineEndings =
   mkTest $
     CabalAddTest
       { catName = "Windows line endings"
-      , catArgs = ["-c", "exe", "foo < 1 && >0.7", "quux < 1"]
+      , catArgs = ["exe", "foo < 1 && >0.7", "quux < 1"]
       , catInput =
           convertToWindowsLineEndings
             [s|
