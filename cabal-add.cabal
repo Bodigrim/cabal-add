@@ -36,13 +36,13 @@ library
     build-depends:
         base <5,
         bytestring <0.13,
-        Cabal >=3.6 && <3.11,
+        Cabal >=3.6 && <3.13,
         containers <0.8,
         mtl <2.4
 
     if flag(cabal-syntax)
         build-depends:
-            Cabal-syntax >=3.8 && <3.11,
+            Cabal-syntax >=3.8 && <3.13,
             Cabal >=3.8
 
     else
@@ -59,15 +59,16 @@ executable cabal-add
         base <5,
         bytestring <0.13,
         cabal-add,
+        cabal-install-parsers >=0.4.1 && <0.7,
         directory <1.4,
         optparse-applicative >=0.16 && <0.19,
         process <1.7
 
     if flag(cabal-syntax)
-        build-depends: Cabal-syntax >=3.8 && <3.11
+        build-depends: Cabal-syntax
 
     else
-        build-depends: Cabal <3.7
+        build-depends: Cabal
 
 test-suite cabal-add-tests
     type:               exitcode-stdio-1.0
@@ -77,7 +78,7 @@ test-suite cabal-add-tests
     default-language:   GHC2021
     ghc-options:        -Wall
     build-depends:
-        base,
+        base <5,
         Diff >=0.4,
         directory,
         process,
