@@ -20,6 +20,8 @@ module Distribution.Client.Add (
   validateChanges,
 ) where
 
+import Control.Applicative ((<|>))
+import Control.Monad (guard)
 import Control.Monad.Error.Class (MonadError, throwError)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
@@ -46,6 +48,8 @@ import Distribution.PackageDescription (
   PackageDescription (..),
   componentNameStanza,
   componentNameString,
+  pkgName,
+  unPackageName,
   unUnqualComponentName,
  )
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
@@ -54,8 +58,16 @@ import Distribution.PackageDescription.Parsec (
   parseGenericPackageDescriptionMaybe,
   runParseResult,
  )
-import Distribution.Parsec (Position (..), eitherParsec, showPError)
-import Distribution.Simple.BuildTarget (BuildTarget (BuildTargetComponent), readUserBuildTargets, resolveBuildTargets)
+import Distribution.Parsec (
+  Position (..),
+  eitherParsec,
+  showPError,
+ )
+import Distribution.Simple.BuildTarget (
+  BuildTarget (BuildTargetComponent),
+  readUserBuildTargets,
+  resolveBuildTargets,
+ )
 
 -- | Just a newtype wrapper, since @Cabal-syntax@ does not provide any.
 newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
@@ -219,12 +231,24 @@ parseCabalFile fileName contents = do
   pure (fields, packDescr)
 
 readBuildTarget :: PackageDescription -> String -> Maybe ComponentName
-readBuildTarget pkg targetStr = do
+readBuildTarget pkg targetStr =
+  readBuildTarget' pkg targetStr <|> readBuildTarget'' pkg targetStr
+
+readBuildTarget' :: PackageDescription -> String -> Maybe ComponentName
+readBuildTarget' pkg targetStr = do
   let (_, utargets) = readUserBuildTargets [targetStr]
   [utarget] <- pure utargets
   let (_, btargets) = resolveBuildTargets pkg [(utarget, False)]
   [BuildTargetComponent btarget] <- pure btargets
   pure btarget
+
+-- | Surprisingly, 'resolveBuildTargets' does not support package component.
+-- Let's work around this limitation manually for now.
+readBuildTarget'' :: PackageDescription -> String -> Maybe ComponentName
+readBuildTarget'' pkg targetStr = do
+  (pref, ':' : suff) <- pure $ span (/= ':') targetStr
+  guard $ unPackageName (pkgName (package pkg)) == pref
+  readBuildTarget' pkg suff
 
 -- | Resolve a raw component name.
 resolveComponent

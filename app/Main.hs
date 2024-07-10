@@ -18,6 +18,7 @@ import Data.Either (partitionEithers)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes)
+import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Client.Add
 import Distribution.Fields (Field)
 import Distribution.PackageDescription (
@@ -46,6 +47,7 @@ import Options.Applicative.NonEmpty (some1)
 import System.Directory (doesFileExist, listDirectory)
 import System.Environment (getArgs, withArgs)
 import System.Exit (die)
+import System.FilePath (takeDirectory, (</>))
 
 data RawConfig = RawConfig
   { rcnfMProjectFile :: !(Maybe FilePath)
@@ -100,7 +102,7 @@ extractCabalFilesFromProject projectFn = do
   resolved <- resolveProject projectFn parsed
   case resolved of
     Left exc -> throwIO exc
-    Right prj -> pure $ prjPackages prj
+    Right prj -> pure $ map (takeDirectory projectFn </>) $ prjPackages prj
 
 resolveCabalFiles :: Maybe FilePath -> IO [FilePath]
 resolveCabalFiles = \case
@@ -126,32 +128,58 @@ stripAdd :: [String] -> [String]
 stripAdd ("add" : xs) = xs
 stripAdd xs = xs
 
+type Input =
+  ( FilePath
+  , ByteString
+  , [Field Position]
+  , GenericPackageDescription
+  , Either
+      CommonStanza
+      ComponentName
+  , NonEmpty ByteString
+  )
+
 mkInputs
-  :: FilePath
+  :: Bool
+  -> FilePath
   -> ByteString
   -> NonEmpty String
-  -> Either
-      String
-      ( FilePath
-      , ByteString
-      , [Field Position]
-      , GenericPackageDescription
-      , Either
-          CommonStanza
-          ComponentName
-      , NonEmpty ByteString
-      )
-mkInputs cabalFile origContents args = do
+  -> Either String Input
+mkInputs isCmpRequired cabalFile origContents args = do
   (fields, packDescr) <- parseCabalFile cabalFile origContents
-  let specVer = specVersion $ packageDescription packDescr
+  let specVer :: CabalSpecVersion
+      specVer = specVersion $ packageDescription packDescr
+      mkCmp :: Maybe String -> Either String (Either CommonStanza ComponentName)
       mkCmp = resolveComponent cabalFile (fields, packDescr)
+      mkDeps :: NonEmpty String -> Either String (NonEmpty ByteString)
       mkDeps = traverse (validateDependency specVer)
   (cmp, deps) <- case args of
     x :| (y : ys)
       | Right c <- mkCmp (Just x) ->
           (c,) <$> mkDeps (y :| ys)
-    _ -> (,) <$> mkCmp Nothing <*> mkDeps args
+    _ ->
+      if isCmpRequired
+        then Left "Component is required"
+        else (,) <$> mkCmp Nothing <*> mkDeps args
   pure (cabalFile, origContents, fields, packDescr, cmp, deps)
+
+disambiguateInputs
+  :: Maybe FilePath
+  -> [FilePath]
+  -> [Either a Input]
+  -> Either String Input
+disambiguateInputs mProjectFile cabalFiles inputs = case partitionEithers inputs of
+  ([], []) -> Left $ case mProjectFile of
+    Nothing -> "No Cabal files or projects are found in the current folder, please specify --project-file."
+    Just projFn -> "No Cabal files are found in " ++ projFn
+  (_errs, []) ->
+    Left $
+      "No matching targets found amongst: "
+        ++ L.intercalate ", " cabalFiles
+  (_, [inp]) -> pure inp
+  (_, _inps) ->
+    Left $
+      "Target component is ambiguous, please specify it as package:type:component. See https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms for reference"
 
 main :: IO ()
 main = do
@@ -167,21 +195,11 @@ main = do
   cabalFilesAndContent <-
     catMaybes
       <$> traverse (\fn -> fmap (fn,) <$> readCabalFile fn) cabalFiles
-  let inputs = map (\(fn, cnt) -> mkInputs fn cnt rcnfArgs) cabalFilesAndContent
+  let getInput isCmpRequired =
+        disambiguateInputs rcnfMProjectFile (fmap fst cabalFilesAndContent) $
+          map (\(fn, cnt) -> mkInputs isCmpRequired fn cnt rcnfArgs) cabalFilesAndContent
 
-  input <- case partitionEithers inputs of
-    ([], []) -> die $ case rcnfMProjectFile of
-      Nothing -> "No Cabal files or projects are found in the current folder, specify --project-file."
-      Just projFn -> "No Cabal files are found in " ++ projFn
-    (_errs, []) ->
-      die $
-        "No valid targets found amongst: "
-          ++ L.intercalate ", " (fmap fst cabalFilesAndContent)
-    (_, [inp]) -> pure inp
-    (_, inps) ->
-      die $
-        "Cabal file is ambiguous. Possible targets are: "
-          ++ L.intercalate ", " (map (\(a, _, _, _, _, _) -> a) inps)
+  input <- either (const $ either die pure $ getInput True) pure (getInput False)
 
   let (cabalFile, cnfOrigContents, cnfFields, origPackDescr, cnfComponent, cnfDependencies) = input
 

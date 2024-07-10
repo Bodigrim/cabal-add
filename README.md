@@ -39,8 +39,8 @@ Command-line arguments:
 
 * `ARGS`
 
-  Optional package component (wildcards such as `exe`,
-  `test` or `bench` are supported) to update, followed
+  Optional [target](https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms)
+  (wildcards such as `exe`, `test` or `bench` are supported) to update, followed
   by a non-empty list of package(s) to add to
   `build-depends` section. Version bounds can be
   provided as well, use quotes to escape comparisons
