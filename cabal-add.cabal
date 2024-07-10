@@ -5,7 +5,7 @@ license:         BSD-3-Clause
 license-file:    LICENSE
 maintainer:      andrew.lelechenko@gmail.com
 author:          Bodigrim
-tested-with:     ghc ==9.8.1 ghc ==9.6.3 ghc ==9.4.7 ghc ==9.2.8
+tested-with:     ghc ==9.10.1 ghc ==9.8.2 ghc ==9.6.6 ghc ==9.4.8 ghc ==9.2.8
 synopsis:        Extend build-depends from the command line
 description:
     Extend build-depends from the command line.
