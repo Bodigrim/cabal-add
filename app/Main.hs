@@ -178,7 +178,7 @@ disambiguateInputs mProjectFile cabalFiles inputs = case partitionEithers inputs
         ++ L.intercalate ", " cabalFiles
   (_, [inp]) -> pure inp
   (_, _inps) ->
-    Left $
+    Left
       "Target component is ambiguous, please specify it as package:type:component. See https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms for reference"
 
 main :: IO ()
