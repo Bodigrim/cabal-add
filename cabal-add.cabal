@@ -5,12 +5,12 @@ license:         BSD-3-Clause
 license-file:    LICENSE
 maintainer:      andrew.lelechenko@gmail.com
 author:          Bodigrim
-tested-with:     ghc ==9.10.1 ghc ==9.8.2 ghc ==9.6.6 ghc ==9.4.8 ghc ==9.2.8
-synopsis:        Extend build-depends from the command line
+tested-with:
+    ghc ==9.10.1 ghc ==9.8.2 ghc ==9.6.6 ghc ==9.4.8 ghc ==9.2.8
+
+synopsis:        Extend Cabal build-depends from the command line
 description:
-    Extend build-depends from the command line.
-    Allows to specify Cabal file, target component
-    and multiple dependencies with version bounds.
+    Extend Cabal @build-depends@ from the command line.
     It works on any sectioned Cabal file,
     supports stanzas and conditional blocks,
     and preserves original formatting.

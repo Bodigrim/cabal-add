@@ -1,4 +1,4 @@
-# cabal-add
+# cabal-add [![Hackage](http://img.shields.io/hackage/v/cabal-add.svg)](https://hackage.haskell.org/package/cabal-add) [![Stackage LTS](http://stackage.org/package/cabal-add/badge/lts)](http://stackage.org/lts/package/cabal-add) [![Stackage Nightly](http://stackage.org/package/cabal-add/badge/nightly)](http://stackage.org/nightly/package/cabal-add)
 
 Extend Cabal `build-depends` from the command line.
 
@@ -8,12 +8,10 @@ it works on any sectioned Cabal file,
 supports stanzas and conditional blocks,
 and preserves original formatting.
 
-Install with
+Install the executable with
 
 ```
-git clone https://github.com/Bodigrim/cabal-add.git
-cd cabal-add
-cabal install exe:cabal-add --allow-newer='cabal-install-parsers:*'
+cabal install cabal-add
 ```
 
 To add a dependency on `foo`, switch to a folder with your project and execute
@@ -22,8 +20,8 @@ To add a dependency on `foo`, switch to a folder with your project and execute
 cabal-add foo
 ```
 
-If you are using Cabal 3.11+ which supports
-[external commands](https://cabal.readthedocs.io/en/latest/external-commands.html),
+If you are using Cabal 3.12+ which supports
+[external commands](https://cabal.readthedocs.io/en/3.12/external-commands.html),
 you can omit the dash:
 
 ```

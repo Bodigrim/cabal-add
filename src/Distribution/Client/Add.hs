@@ -8,14 +8,13 @@
 -- Copyright:   (c) 2023 Bodigrim
 -- License:     BSD-3-Clause
 --
--- Building blocks of @cabal-add@ executable,
--- probably not terribly useful on their own.
+-- Building blocks of @cabal-add@ executable.
 module Distribution.Client.Add (
-  CommonStanza (..),
-  Config (..),
   parseCabalFile,
   resolveComponent,
+  CommonStanza (..),
   validateDependency,
+  Config (..),
   executeConfig,
   validateChanges,
 ) where
@@ -80,12 +79,15 @@ data Config = Config
   -- see "Distribution.PackageDescription.Quirks"),
   -- must be in sync with 'cnfFields'.
   , cnfFields :: ![Field Position]
-  -- ^ Parsed (by 'readFields') representation of the Cabal file,
+  -- ^ Parsed (by 'readFields' or, more specifically, by 'parseCabalFile')
+  -- representation of the Cabal file,
   -- must be in sync with 'cnfOrigContents'.
   , cnfComponent :: !(Either CommonStanza ComponentName)
   -- ^ Which component to update?
+  -- Usually constructed by 'resolveComponent'.
   , cnfDependencies :: !(NonEmpty ByteString)
   -- ^ Which dependencies to add?
+  -- Usually constructed by 'validateDependency'.
   }
   deriving (Eq, Show)
 
@@ -205,7 +207,7 @@ parseCabalFile
   -> ByteString
   -- ^ Contents of the Cabal file.
   -> m ([Field Position], GenericPackageDescription)
-  -- ^ Parsed data.
+  -- ^ Parsed data, suitable for 'resolveComponent'.
 parseCabalFile fileName contents = do
   let legacyErr = "Legacy, unsectioned Cabal files are unsupported"
       errorWithCtx msg =
@@ -258,7 +260,9 @@ resolveComponent
   -> ([Field Position], GenericPackageDescription)
   -- ^ Parsed Cabal file, as returned by 'parseCabalFile'.
   -> Maybe String
-  -- ^ Component name (default component if 'Nothing').
+  -- ^ Component name (or default component if 'Nothing'),
+  -- roughly adhering to the syntax
+  -- of [component targets](https://cabal.readthedocs.io/en/3.12/cabal-commands.html#target-forms).
   -> m (Either CommonStanza ComponentName)
   -- ^ Resolved component.
 resolveComponent _ (_, gpd) (Just component)
@@ -299,15 +303,16 @@ resolveComponent
         fmap Right (resolveToComponentName componentNames component)
           <> fmap Left (resolveToCommonStanza commonStanzas component)
 
--- | Validate dependency syntax.
+-- | Validate [dependency syntax](https://cabal.readthedocs.io/en/3.12/cabal-package-description-file.html#pkg-field-build-depends),
+-- checking whether Cabal would be able to parse it.
 validateDependency
   :: MonadError String m
   => CabalSpecVersion
-  -- ^ Specification version to adhere to.
+  -- ^ Cabal format version to adhere to.
   -> String
   -- ^ Raw dependency to add.
   -> m ByteString
-  -- ^ Dependency as 'ByteString'.
+  -- ^ Validated dependency as 'ByteString' (or an error).
 validateDependency specVer d = case eitherParsec d of
   Right (_ :: Dependency)
     | specVer < CabalSpecV3_0 && elem ':' d ->
@@ -484,7 +489,7 @@ roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
   pure $
     before <> buildDeps <> after
 
--- | Main work horse of the module, adding dependencies to a specified component
+-- | The main workhorse, adding dependencies to a specified component
 -- in the Cabal file.
 executeConfig
   :: (Either CommonStanza ComponentName -> ByteString -> Bool)
@@ -504,6 +509,7 @@ validateChanges
   -- ^ Original package description.
   -> Either CommonStanza ComponentName
   -- ^ Which component was supposed to be updated?
+  -- Usually constructed by 'resolveComponent'.
   -> ByteString
   -- ^ Update Cabal file.
   -> Bool
