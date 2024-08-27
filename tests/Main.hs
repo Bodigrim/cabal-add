@@ -14,13 +14,14 @@ import Data.String.QQ (s)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode (..))
 import System.IO.Temp (withSystemTempDirectory)
-import System.Process (cwd, proc, readCreateProcessWithExitCode)
+import System.Process (cwd, env, proc, readCreateProcessWithExitCode)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.Providers (IsTest (..), singleTest, testFailed, testPassed)
 
 data CabalAddTest = CabalAddTest
   { catName :: String
   , catArgs :: [String]
+  , catEnv :: [(String, String)]
   , catInput :: String
   , catOutput :: String
   }
@@ -36,7 +37,7 @@ instance IsTest CabalAddTest where
         withSystemTempDirectory template $ \tempDir -> do
           let cabalFileName = tempDir ++ "/" ++ template ++ ".cabal"
           writeFile cabalFileName catInput
-          let crpr = (proc cabalAddExe catArgs) {cwd = Just tempDir}
+          let crpr = (proc cabalAddExe catArgs) {cwd = Just tempDir, env = Just catEnv}
           (code, _out, err) <- readCreateProcessWithExitCode crpr ""
           case code of
             ExitFailure {} -> pure $ testFailed err
@@ -66,6 +67,7 @@ caseMultipleDependencies1 =
     CabalAddTest
       { catName = "add multiple dependencies 1"
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -98,6 +100,7 @@ caseMultipleDependencies2 =
     CabalAddTest
       { catName = "add multiple dependencies 2"
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -126,6 +129,7 @@ caseMultipleDependencies3 =
     CabalAddTest
       { catName = "add multiple dependencies 3"
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -158,6 +162,7 @@ caseMultipleDependencies4 =
     CabalAddTest
       { catName = "add multiple dependencies 4"
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -192,6 +197,7 @@ caseLibraryInDescription =
     CabalAddTest
       { catName = "word 'library' in description"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -228,6 +234,7 @@ caseImportFields1 =
     CabalAddTest
       { catName = "import fields 1"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 2.2
@@ -265,6 +272,7 @@ caseImportFields2 =
     CabalAddTest
       { catName = "import fields 2"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 2.2
@@ -302,6 +310,7 @@ caseImportFields3 =
     CabalAddTest
       { catName = "import fields 3"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 2.2
@@ -337,6 +346,7 @@ caseSublibraryTarget1 =
     CabalAddTest
       { catName = "sublibrary target 1"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -369,6 +379,7 @@ caseSublibraryTarget2 =
     CabalAddTest
       { catName = "sublibrary target 2"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -409,6 +420,7 @@ caseExecutableTarget1 =
     CabalAddTest
       { catName = "executable target 1"
       , catArgs = ["exe", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -443,6 +455,7 @@ caseExecutableTarget2 =
     CabalAddTest
       { catName = "executable target 2"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -477,6 +490,7 @@ caseExecutableTarget3 =
     CabalAddTest
       { catName = "executable target 3"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -511,6 +525,7 @@ caseExecutableTarget4 =
     CabalAddTest
       { catName = "executable target 4"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -551,6 +566,7 @@ caseTestTarget1 =
     CabalAddTest
       { catName = "test target 1"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -593,6 +609,7 @@ caseTestTarget2 =
     CabalAddTest
       { catName = "test target 2"
       , catArgs = ["test:baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -635,6 +652,7 @@ caseCommonStanzaTarget1 =
     CabalAddTest
       { catName = "common stanza as a target 1"
       , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -664,6 +682,7 @@ caseCommonStanzaTarget2 =
     CabalAddTest
       { catName = "common stanza as a target 2"
       , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -700,6 +719,7 @@ caseTwoSpacesInStanza =
     CabalAddTest
       { catName = "two spaces in stanza"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -734,6 +754,7 @@ caseTitleCaseStanza1 =
     CabalAddTest
       { catName = "title case in stanza 1"
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -766,6 +787,7 @@ caseTitleCaseStanza2 =
     CabalAddTest
       { catName = "title case in stanza 2"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -800,6 +822,7 @@ caseTitleCaseBuildDepends =
     CabalAddTest
       { catName = "title case in build-depends"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -834,6 +857,7 @@ caseSharedComponentPrefixes =
     CabalAddTest
       { catName = "shared component prefixes"
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 name:          dummy
@@ -878,6 +902,7 @@ windowsLineEndings =
     CabalAddTest
       { catName = "Windows line endings"
       , catArgs = ["exe", "foo < 1 && >0.7", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           convertToWindowsLineEndings
             [s|
@@ -912,6 +937,7 @@ caseLeadingComma1 =
     CabalAddTest
       { catName = "build-depends start from comma 1"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -944,6 +970,7 @@ caseLeadingComma2 =
     CabalAddTest
       { catName = "build-depends start from comma 2"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -972,6 +999,7 @@ caseLeadingComma3 =
     CabalAddTest
       { catName = "build-depends start from comma 3"
       , catArgs = ["baz ^>= 2.0", "quux > 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1004,6 +1032,7 @@ caseConditionalBuildDepends =
     CabalAddTest
       { catName = "build-depends are under condition"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1037,6 +1066,7 @@ caseEmptyComponent1 =
     CabalAddTest
       { catName = "empty component 1"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1071,6 +1101,7 @@ caseEmptyComponent2 =
     CabalAddTest
       { catName = "empty component 2"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1098,6 +1129,7 @@ caseEmptyComponent3 =
     CabalAddTest
       { catName = "empty component 3"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1124,6 +1156,7 @@ caseEmptyBuildDepends =
     CabalAddTest
       { catName = "empty build-depends"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1153,6 +1186,7 @@ caseComponentInBraces =
     CabalAddTest
       { catName = "component in figure braces"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1183,6 +1217,7 @@ caseCommentsWithCommas =
     CabalAddTest
       { catName = "comments with commas"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1219,6 +1254,7 @@ caseCommentsWithoutCommas =
     CabalAddTest
       { catName = "comments without commas"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1253,6 +1289,7 @@ caseDependenciesOnTheSameLine =
     CabalAddTest
       { catName = "all build-deps on the same line"
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1281,6 +1318,7 @@ caseIgnoreAddArgument =
     CabalAddTest
       { catName = "ignore add as the first command-line argument"
       , catArgs = ["add", "baz ^>= 2.0", "quux < 1"]
+      , catEnv = [("CABAL", "/fake/usr/bin/local/cabal")]
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1309,6 +1347,7 @@ caseDoNotIgnoreAddArgument =
     CabalAddTest
       { catName = "do not ignore add as the second command-line argument"
       , catArgs = ["baz ^>= 2.0", "add", "quux < 1"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1337,6 +1376,7 @@ caseSublibraryDependency =
     CabalAddTest
       { catName = "sublibrary as a dependency"
       , catArgs = ["foo:bar"]
+      , catEnv = mempty
       , catInput =
           [s|
 cabal-version: 3.6
@@ -1356,6 +1396,38 @@ build-type:    Simple
 
 executable dagda
   build-depends:   foo:bar, magda, base
+|]
+      }
+
+caseSpecialDependencyName1 :: TestTree
+caseSpecialDependencyName1 =
+  mkTest $
+    CabalAddTest
+      { catName = "add dependency named 'add'"
+      , catArgs = ["add"]
+      , catEnv = mempty
+      , catInput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    base >=4.15 && <5
+|]
+      , catOutput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    add,
+    base >=4.15 && <5
 |]
       }
 
@@ -1403,4 +1475,5 @@ main =
       , caseIgnoreAddArgument
       , caseDoNotIgnoreAddArgument
       , caseSublibraryDependency
+      , caseSpecialDependencyName1
       ]

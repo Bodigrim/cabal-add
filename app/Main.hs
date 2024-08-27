@@ -17,7 +17,7 @@ import Data.ByteString.Char8 qualified as B
 import Data.Either (partitionEithers)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isJust)
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Client.Add
 import Distribution.Fields (Field)
@@ -45,7 +45,7 @@ import Options.Applicative (
  )
 import Options.Applicative.NonEmpty (some1)
 import System.Directory (doesFileExist, listDirectory)
-import System.Environment (getArgs, withArgs)
+import System.Environment (getArgs, lookupEnv, withArgs)
 import System.Exit (die)
 import System.FilePath (takeDirectory, (</>))
 
@@ -183,9 +183,10 @@ disambiguateInputs mProjectFile cabalFiles inputs = case partitionEithers inputs
 
 main :: IO ()
 main = do
+  isCabalEnvVarSet <- isJust <$> lookupEnv "CABAL"
   rawArgs <- getArgs
   RawConfig {..} <-
-    withArgs (stripAdd rawArgs) $
+    withArgs ((if isCabalEnvVarSet then stripAdd else id) rawArgs) $
       execParser $
         info
           (helper <*> parseRawConfig)
