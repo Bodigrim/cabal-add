@@ -160,9 +160,10 @@ mkInputs isCmpRequired cabalFile origContents args = do
     x :| (y : ys)
       | Right c <- mkCmp (Just x) ->
           (c,) <$> mkDeps (y :| ys)
+      | isCmpRequired -> Left $ "Target component '" ++ x ++ "' is not found"
     _ ->
       if isCmpRequired
-        then Left "Component is required"
+        then Left "Target component is required"
         else (,) <$> mkCmp Nothing <*> mkDeps args
   pure $ Input cabalFile packDescr (Config origContents fields cmp deps)
 
@@ -176,12 +177,12 @@ disambiguateInputs mProjectFile inputs = case inputs' of
     Just projFn -> "No Cabal files are found in " ++ projFn
   (errs, []) ->
     Left $
-      "No matching targets found amongst: "
-        ++ L.intercalate ", " (map fst errs)
+      L.intercalate "\n" $
+        map (\(fn, err) -> "Cannot add a dependency to " ++ fn ++ " because: " ++ err) errs
   (_, [inp]) -> pure $ snd inp
   (_, _inps) ->
     Left
-      "Target component is ambiguous, please specify it as package:type:component. See https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms for reference"
+      "Cannot add a dependency, because target component is ambiguous. Please specify it as package:type:component. See https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms for reference"
   where
     inputs' = partitionEithers $ map (\(fn, e) -> bimap (fn,) (fn,) e) inputs
 
@@ -206,7 +207,18 @@ main = do
             (\(fn, cnt) -> (fn, mkInputs isCmpRequired fn cnt rcnfArgs))
             cabalFilesAndContent
 
-  input <- either (const $ either die pure $ getInput True) pure (getInput False)
+  input <- case getInput False of
+    Right i -> pure i
+    Left errFalse -> case rcnfArgs of
+      _ :| [] -> die errFalse
+      _ -> case getInput True of
+        Right i -> pure i
+        Left errTrue ->
+          die $
+            "If the first argument is interpreted as a dependency:\n"
+              ++ errFalse
+              ++ "\n\nIf the first argument is interpreted as a target component:\n"
+              ++ errTrue
 
   let Input cabalFile origPackDescr cnf = input
 
