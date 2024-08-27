@@ -12,6 +12,7 @@ module Main (main) where
 import Cabal.Project (parseProject, prjPackages, resolveProject)
 import Control.Exception (throwIO)
 import Control.Monad (filterM)
+import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Either (partitionEithers)
@@ -20,7 +21,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes, isJust)
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Client.Add
-import Distribution.Fields (Field)
 import Distribution.PackageDescription (
   ComponentName,
   GenericPackageDescription,
@@ -28,7 +28,6 @@ import Distribution.PackageDescription (
   specVersion,
  )
 import Distribution.PackageDescription.Quirks (patchQuirks)
-import Distribution.Parsec (Position)
 import Options.Applicative (
   Parser,
   execParser,
@@ -128,23 +127,27 @@ stripAdd :: [String] -> [String]
 stripAdd ("add" : xs) = xs
 stripAdd xs = xs
 
-type Input =
-  ( FilePath
-  , ByteString
-  , [Field Position]
-  , GenericPackageDescription
-  , Either
-      CommonStanza
-      ComponentName
-  , NonEmpty ByteString
-  )
+data Input = Input
+  { inpFilePath :: FilePath
+  , inpPackageDescription :: GenericPackageDescription
+  , inpConfig :: Config
+  }
+  deriving (Show)
 
 mkInputs
   :: Bool
+  -- ^ Must the first argument be a component name?
+  -- As opposed to interpreting it as one of dependencies to add.
   -> FilePath
+  -- ^ Cabal file name, primarily for error reporting.
+  -- Note that 'mkInputs' does not do any 'IO'.
   -> ByteString
+  -- ^ Cabal file content.
   -> NonEmpty String
+  -- ^ List of arguments. The first one is either a component name
+  -- or a dependency (see 'Bool' flag above), the rest are dependencies.
   -> Either String Input
+  -- ^ Either an error or a tuple of input data.
 mkInputs isCmpRequired cabalFile origContents args = do
   (fields, packDescr) <- parseCabalFile cabalFile origContents
   let specVer :: CabalSpecVersion
@@ -161,25 +164,26 @@ mkInputs isCmpRequired cabalFile origContents args = do
       if isCmpRequired
         then Left "Component is required"
         else (,) <$> mkCmp Nothing <*> mkDeps args
-  pure (cabalFile, origContents, fields, packDescr, cmp, deps)
+  pure $ Input cabalFile packDescr (Config origContents fields cmp deps)
 
 disambiguateInputs
   :: Maybe FilePath
-  -> [FilePath]
-  -> [Either a Input]
+  -> [(FilePath, Either String Input)]
   -> Either String Input
-disambiguateInputs mProjectFile cabalFiles inputs = case partitionEithers inputs of
+disambiguateInputs mProjectFile inputs = case inputs' of
   ([], []) -> Left $ case mProjectFile of
     Nothing -> "No Cabal files or projects are found in the current folder, please specify --project-file."
     Just projFn -> "No Cabal files are found in " ++ projFn
-  (_errs, []) ->
+  (errs, []) ->
     Left $
       "No matching targets found amongst: "
-        ++ L.intercalate ", " cabalFiles
-  (_, [inp]) -> pure inp
+        ++ L.intercalate ", " (map fst errs)
+  (_, [inp]) -> pure $ snd inp
   (_, _inps) ->
     Left
       "Target component is ambiguous, please specify it as package:type:component. See https://cabal.readthedocs.io/en/latest/cabal-commands.html#target-forms for reference"
+  where
+    inputs' = partitionEithers $ map (\(fn, e) -> bimap (fn,) (fn,) e) inputs
 
 main :: IO ()
 main = do
@@ -197,14 +201,16 @@ main = do
     catMaybes
       <$> traverse (\fn -> fmap (fn,) <$> readCabalFile fn) cabalFiles
   let getInput isCmpRequired =
-        disambiguateInputs rcnfMProjectFile (fmap fst cabalFilesAndContent) $
-          map (\(fn, cnt) -> mkInputs isCmpRequired fn cnt rcnfArgs) cabalFilesAndContent
+        disambiguateInputs rcnfMProjectFile $
+          map
+            (\(fn, cnt) -> (fn, mkInputs isCmpRequired fn cnt rcnfArgs))
+            cabalFilesAndContent
 
   input <- either (const $ either die pure $ getInput True) pure (getInput False)
 
-  let (cabalFile, cnfOrigContents, cnfFields, origPackDescr, cnfComponent, cnfDependencies) = input
+  let Input cabalFile origPackDescr cnf = input
 
-  case executeConfig (validateChanges origPackDescr) (Config {..}) of
+  case executeConfig (validateChanges origPackDescr) cnf of
     Nothing ->
       die $
         "Cannot extend build-depends in "

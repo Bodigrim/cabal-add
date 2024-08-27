@@ -291,14 +291,19 @@ resolveComponent
         "Target component is ambiguous.\n"
           ++ knownTargetsHint
     where
+      allTargets :: Set String
       allTargets =
         S.fromList (mapMaybe (fmap unUnqualComponentName . componentNameString) (S.toList componentNames))
           <> S.map (B.unpack . unCommonStanza) commonStanzas
           <> specialComponents componentNames
+
+      knownTargetsHint :: String
       knownTargetsHint =
         "Specify one with -c: "
           ++ L.intercalate ", " (S.toList allTargets)
           ++ "."
+
+      resolution :: Resolution (Either CommonStanza ComponentName)
       resolution =
         fmap Right (resolveToComponentName componentNames component)
           <> fmap Left (resolveToCommonStanza commonStanzas component)
