@@ -36,13 +36,13 @@ library
     build-depends:
         base <5,
         bytestring <0.13,
-        Cabal >=3.6 && <3.13,
+        Cabal >=3.6 && <3.15,
         containers <0.8,
         mtl <2.4
 
     if flag(cabal-syntax)
         build-depends:
-            Cabal-syntax >=3.8 && <3.13,
+            Cabal-syntax >=3.8 && <3.15,
             Cabal >=3.8
 
     else
