@@ -17,6 +17,7 @@ module Distribution.Client.Add (
   Config (..),
   executeConfig,
   validateChanges,
+  TargetField (..),
 ) where
 
 import Control.Applicative ((<|>))
@@ -85,11 +86,24 @@ data Config = Config
   , cnfComponent :: !(Either CommonStanza ComponentName)
   -- ^ Which component to update?
   -- Usually constructed by 'resolveComponent'.
-  , cnfDependencies :: !(NonEmpty ByteString)
-  -- ^ Which dependencies to add?
+  , cnfAdditions :: !(NonEmpty ByteString)
+  -- ^ Which content to add to the target field?
   -- Usually constructed by 'validateDependency'.
+  , cnfTargetField :: !TargetField
+  -- ^ Which field to add the provided content to?
   }
   deriving (Eq, Show)
+
+data TargetField
+  = BuildDepends
+  | ExposedModules
+  | OtherModules
+  deriving (Eq, Show, Ord)
+
+getTargetName :: TargetField -> ByteString
+getTargetName BuildDepends = "build-depends"
+getTargetName ExposedModules = "exposed-modules"
+getTargetName OtherModules = "other-modules"
 
 extractComponentNames :: GenericPackageDescription -> Set ComponentName
 extractComponentNames GenericPackageDescription {..} =
@@ -390,9 +404,9 @@ getFieldNameAnn = \case
   Field (Name ann _) _ -> ann
   Section (Name ann _) _ _ -> ann
 
-isBuildDependsField :: Field ann -> Bool
-isBuildDependsField = \case
-  Field (Name _ "build-depends") _ -> True
+isFieldWithName :: ByteString -> Field ann -> Bool
+isFieldWithName name = \case
+  Field (Name _ fieldName) _ -> name == fieldName
   _ -> False
 
 detectLeadingComma :: ByteString -> Maybe ByteString
@@ -410,10 +424,10 @@ dropRepeatingSpaces xs = case B.uncons xs of
 -- to preserve formatting. This often breaks however
 -- if there are comments in between build-depends.
 fancyAlgorithm :: Config -> Maybe ByteString
-fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
+fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
-  buildDependsField <- L.find isBuildDependsField subFields
+  buildDependsField <- L.find (isFieldWithName $ getTargetName cnfTargetField) subFields
   Field _ (FieldLine firstDepPos _dep : restDeps) <- pure buildDependsField
 
   -- This is not really the second dependency:
@@ -447,38 +461,38 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
               splitAtPosition pos cnfOrigContents
 
   let (beforeFirstDep, afterFirstDep) = splitAtPosition firstDepPos cnfOrigContents
-      newBuildDeps = beforeFirst <> B.intercalate inBetween (NE.toList cnfDependencies) <> afterLast
+      newContents = beforeFirst <> B.intercalate inBetween (NE.toList cnfAdditions) <> afterLast
 
-  let ret = beforeFirstDep <> newBuildDeps <> afterFirstDep
+  let ret = beforeFirstDep <> newContents <> afterFirstDep
   pure ret
 
 -- | Find build-depends section and insert new
 -- dependencies at the beginning. Very limited effort
 -- is put into preserving formatting.
 niceAlgorithm :: Config -> Maybe ByteString
-niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
+niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
-  buildDependsField <- L.find isBuildDependsField subFields
-  Field _ (FieldLine pos _dep : _) <- pure buildDependsField
+  targetField <- L.find (isFieldWithName (getTargetName cnfTargetField)) subFields
+  Field _ (FieldLine pos _dep : _) <- pure targetField
 
   let (before, after) = splitAtPosition pos cnfOrigContents
-      (_, buildDepsHeader) = splitAtPosition (getFieldNameAnn buildDependsField) before
-      filler = dropRepeatingSpaces $ B.drop 1 $ B.dropWhile (/= ':') buildDepsHeader
+      (_, targetHeader) = splitAtPosition (getFieldNameAnn targetField) before
+      filler = dropRepeatingSpaces $ B.drop 1 $ B.dropWhile (/= ':') targetHeader
       leadingCommaStyle = detectLeadingComma after
       filler' = maybe ("," <> filler) (filler <>) leadingCommaStyle
-      newBuildDeps =
+      newFieldContents =
         fromMaybe "" leadingCommaStyle
-          <> B.intercalate filler' (NE.toList cnfDependencies)
+          <> B.intercalate filler' (NE.toList cnfAdditions)
           <> (if isJust leadingCommaStyle then filler else filler')
   pure $
-    before <> newBuildDeps <> after
+    before <> newFieldContents <> after
 
 -- | Introduce a new build-depends section
 -- after the last common stanza import.
 -- This is not fancy, but very robust.
 roughAlgorithm :: Config -> Maybe ByteString
-roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies} = do
+roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
   pos@(Position _ row) <- findNonImportField componentAndRest
   let (before, after) = splitAtPositionLine pos cnfOrigContents
@@ -488,8 +502,8 @@ roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfDependencies
       buildDeps =
         (if needsNewlineBefore then lineEnding else "")
           <> B.replicate (row - 1) ' '
-          <> "build-depends: "
-          <> B.intercalate ", " (NE.toList cnfDependencies)
+          <> (getTargetName cnfTargetField <> ": ")
+          <> B.intercalate ", " (NE.toList cnfAdditions)
           <> lineEnding
   pure $
     before <> buildDeps <> after
