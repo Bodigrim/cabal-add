@@ -86,24 +86,34 @@ data Config = Config
   , cnfComponent :: !(Either CommonStanza ComponentName)
   -- ^ Which component to update?
   -- Usually constructed by 'resolveComponent'.
+  , cnfTargetField :: !TargetField
+  -- ^ Which field to add the provided content to?
   , cnfAdditions :: !(NonEmpty ByteString)
   -- ^ Which content to add to the target field?
   -- Usually constructed by 'validateDependency'.
-  , cnfTargetField :: !TargetField
-  -- ^ Which field to add the provided content to?
   }
   deriving (Eq, Show)
 
+-- | A field in a cabal file, new content can be added to
 data TargetField
-  = BuildDepends
-  | ExposedModules
-  | OtherModules
+  = -- | Corresponds to @build-depends@ in the cabal file
+    BuildDepends
+  | -- | Corresponds to @exposed-modules@ in the cabal file
+    ExposedModules
+  | -- | Corresponds to @other-modules@ in the cabal file
+    OtherModules
   deriving (Eq, Show, Ord)
 
 getTargetName :: TargetField -> ByteString
-getTargetName BuildDepends = "build-depends"
-getTargetName ExposedModules = "exposed-modules"
-getTargetName OtherModules = "other-modules"
+getTargetName = \case
+  BuildDepends -> "build-depends"
+  ExposedModules -> "exposed-modules"
+  OtherModules -> "other-modules"
+
+requiresCommas :: TargetField -> Bool
+requiresCommas = \case
+  BuildDepends -> True
+  _ -> False
 
 extractComponentNames :: GenericPackageDescription -> Set ComponentName
 extractComponentNames GenericPackageDescription {..} =
@@ -404,15 +414,19 @@ getFieldNameAnn = \case
   Field (Name ann _) _ -> ann
   Section (Name ann _) _ _ -> ann
 
-isFieldWithName :: ByteString -> Field ann -> Bool
-isFieldWithName name = \case
+isTargetField :: ByteString -> Field ann -> Bool
+isTargetField name = \case
   Field (Name _ fieldName) _ -> name == fieldName
   _ -> False
 
-detectLeadingComma :: ByteString -> Maybe ByteString
-detectLeadingComma xs = case B.uncons xs of
+detectLeadingSeparator :: ByteString -> Maybe ByteString
+detectLeadingSeparator xs = case B.uncons xs of
   Just (',', ys) -> Just $ B.cons ',' $ B.takeWhile (== ' ') ys
+  Just (' ', ys) -> Just $ B.takeWhile (== ' ') ys
   _ -> Nothing
+
+isCommaSeparated :: ByteString -> Bool
+isCommaSeparated xs = ',' `B.elem` xs
 
 dropRepeatingSpaces :: ByteString -> ByteString
 dropRepeatingSpaces xs = case B.uncons xs of
@@ -427,7 +441,7 @@ fancyAlgorithm :: Config -> Maybe ByteString
 fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
-  buildDependsField <- L.find (isFieldWithName $ getTargetName cnfTargetField) subFields
+  buildDependsField <- L.find (isTargetField $ getTargetName cnfTargetField) subFields
   Field _ (FieldLine firstDepPos _dep : restDeps) <- pure buildDependsField
 
   -- This is not really the second dependency:
@@ -437,14 +451,15 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
         _ -> Nothing
       fillerPred c = isSpaceChar8 c || c == ','
 
-  let (B.takeWhileEnd fillerPred -> pref, B.takeWhile fillerPred -> suff) =
-        splitAtPosition firstDepPos cnfOrigContents
+  let (rawPref, rawSuff) = splitAtPosition firstDepPos cnfOrigContents
+      pref = B.takeWhileEnd fillerPred rawPref
+      suff = B.takeWhile fillerPred rawSuff
       prefSuff = pref <> suff
-
+      commaSeparation = isCommaSeparated rawSuff || requiresCommas cnfTargetField
       (afterLast, inBetween, beforeFirst) = case secondDepPos of
         Nothing ->
-          ( if B.any (== ',') prefSuff then pref' else "," <> pref'
-          , if B.any (== ',') prefSuff then prefSuff' else "," <> prefSuff'
+          ( if B.any (== ',') prefSuff || not commaSeparation then pref' else "," <> pref'
+          , if B.any (== ',') prefSuff || not commaSeparation then prefSuff' else "," <> prefSuff'
           , suff
           )
           where
@@ -461,9 +476,9 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
               splitAtPosition pos cnfOrigContents
 
   let (beforeFirstDep, afterFirstDep) = splitAtPosition firstDepPos cnfOrigContents
-      newContents = beforeFirst <> B.intercalate inBetween (NE.toList cnfAdditions) <> afterLast
+      newFieldContents = beforeFirst <> B.intercalate inBetween (NE.toList cnfAdditions) <> afterLast
 
-  let ret = beforeFirstDep <> newContents <> afterFirstDep
+  let ret = beforeFirstDep <> newFieldContents <> afterFirstDep
   pure ret
 
 -- | Find build-depends section and insert new
@@ -473,18 +488,19 @@ niceAlgorithm :: Config -> Maybe ByteString
 niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
-  targetField <- L.find (isFieldWithName (getTargetName cnfTargetField)) subFields
+  targetField <- L.find (isTargetField (getTargetName cnfTargetField)) subFields
   Field _ (FieldLine pos _dep : _) <- pure targetField
 
   let (before, after) = splitAtPosition pos cnfOrigContents
       (_, targetHeader) = splitAtPosition (getFieldNameAnn targetField) before
+      leadingSeparatorStyle = detectLeadingSeparator after
       filler = dropRepeatingSpaces $ B.drop 1 $ B.dropWhile (/= ':') targetHeader
-      leadingCommaStyle = detectLeadingComma after
-      filler' = maybe ("," <> filler) (filler <>) leadingCommaStyle
+      defaultSep = if isCommaSeparated after || cnfTargetField == BuildDepends then "," else ""
+      filler' = maybe (defaultSep <> filler) (filler <>) leadingSeparatorStyle
       newFieldContents =
-        fromMaybe "" leadingCommaStyle
+        fromMaybe "" leadingSeparatorStyle
           <> B.intercalate filler' (NE.toList cnfAdditions)
-          <> (if isJust leadingCommaStyle then filler else filler')
+          <> (if isJust leadingSeparatorStyle then filler else filler')
   pure $
     before <> newFieldContents <> after
 

@@ -17,7 +17,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Either (partitionEithers)
 import Data.List qualified as L
-import Data.List.NonEmpty (NonEmpty (..), toList)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (catMaybes, isJust)
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Client.Add
@@ -165,7 +165,7 @@ mkInputs isCmpRequired cabalFile origContents args = do
       if isCmpRequired
         then Left "Target component is required"
         else (,) <$> mkCmp Nothing <*> mkDeps args
-  pure $ Input cabalFile packDescr (Config origContents fields cmp deps BuildDepends)
+  pure $ Input cabalFile packDescr (Config origContents fields cmp BuildDepends deps)
 
 disambiguateInputs
   :: Maybe FilePath
