@@ -86,3 +86,20 @@ test-suite cabal-add-tests
         string-qq,
         tasty,
         temporary
+
+test-suite cabal-add-unit-tests
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       tests/
+  main-is:              UnitTests.hs
+  build-depends:
+        base <5,
+        bytestring,
+        Cabal,
+        cabal-add,
+        Diff >=0.4,
+        directory,
+        process,
+        string-qq,
+        tasty,
+        temporary
+
