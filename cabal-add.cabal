@@ -38,7 +38,7 @@ library
         base <5,
         bytestring <0.13,
         Cabal >=3.6 && <3.15,
-        containers <0.8,
+        containers <0.9,
         mtl <2.4
 
     if flag(cabal-syntax)
