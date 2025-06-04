@@ -63,7 +63,7 @@ executable cabal-add
         cabal-install-parsers >=0.4.1 && <0.7,
         directory <1.4,
         filepath <1.6,
-        optparse-applicative >=0.16 && <0.19,
+        optparse-applicative >=0.16 && <0.20,
         process <1.7
 
     if flag(cabal-syntax)
