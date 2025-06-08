@@ -7,7 +7,6 @@ maintainer:      andrew.lelechenko@gmail.com
 author:          Bodigrim
 tested-with:
     ghc ==9.12.2 ghc ==9.10.2 ghc ==9.8.4 ghc ==9.6.7 ghc ==9.4.8
-    ghc ==9.2.8
 
 synopsis:        Extend Cabal build-depends from the command line
 description:
@@ -26,9 +25,6 @@ source-repository head
     type:     git
     location: https://github.com/Bodigrim/cabal-add.git
 
-flag cabal-syntax
-    default: False
-
 library
     exposed-modules:  Distribution.Client.Add
     hs-source-dirs:   src
@@ -37,19 +33,10 @@ library
     build-depends:
         base <5,
         bytestring <0.13,
-        Cabal >=3.6 && <3.15,
+        Cabal >=3.8 && <3.15,
+        Cabal-syntax >=3.8 && <3.15,
         containers <0.9,
         mtl <2.4
-
-    if flag(cabal-syntax)
-        build-depends:
-            Cabal-syntax >=3.8 && <3.15,
-            Cabal >=3.8
-
-    else
-        build-depends:
-            Cabal-syntax <3.7,
-            Cabal <3.7
 
 executable cabal-add
     main-is:          Main.hs
@@ -61,16 +48,11 @@ executable cabal-add
         bytestring <0.13,
         cabal-add,
         cabal-install-parsers >=0.4.1 && <0.7,
+        Cabal-syntax,
         directory <1.4,
         filepath <1.6,
         optparse-applicative >=0.16 && <0.20,
         process <1.7
-
-    if flag(cabal-syntax)
-        build-depends: Cabal-syntax
-
-    else
-        build-depends: Cabal
 
 test-suite cabal-add-tests
     type:               exitcode-stdio-1.0
