@@ -433,10 +433,10 @@ dropRepeatingSpaces xs = case B.uncons xs of
   Just (' ', ys) -> B.cons ' ' (B.dropWhile (== ' ') ys)
   _ -> xs
 
--- | Find build-depends section and insert new
--- dependencies at the beginning, trying our best
+-- | Find a target section and insert new
+-- fields at the beginning, trying our best
 -- to preserve formatting. This often breaks however
--- if there are comments in between build-depends.
+-- if there are comments in between target fields.
 fancyAlgorithm :: Config -> Maybe ByteString
 fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
@@ -481,8 +481,8 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
   let ret = beforeFirstDep <> newFieldContents <> afterFirstDep
   pure ret
 
--- | Find build-depends section and insert new
--- dependencies at the beginning. Very limited effort
+-- | Find a target section and insert new
+-- fields at the beginning. Very limited effort
 -- is put into preserving formatting.
 niceAlgorithm :: Config -> Maybe ByteString
 niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
@@ -504,7 +504,7 @@ niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cn
   pure $
     before <> newFieldContents <> after
 
--- | Introduce a new build-depends section
+-- | Introduce a new target section
 -- after the last common stanza import.
 -- This is not fancy, but very robust.
 roughAlgorithm :: Config -> Maybe ByteString
@@ -524,7 +524,7 @@ roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
   pure $
     before <> buildDeps <> after
 
--- | The main workhorse, adding dependencies to a specified component
+-- | The main workhorse, adding fields to a specified component
 -- in the Cabal file.
 executeConfig
   :: (Either CommonStanza ComponentName -> ByteString -> Bool)
@@ -546,7 +546,7 @@ validateChanges
   -- ^ Which component was supposed to be updated?
   -- Usually constructed by 'resolveComponent'.
   -> ByteString
-  -- ^ Update Cabal file.
+  -- ^ Updated Cabal file.
   -> Bool
   -- ^ Was the update successful?
 validateChanges origPackDesc (Left _commonStanza) newContents =
