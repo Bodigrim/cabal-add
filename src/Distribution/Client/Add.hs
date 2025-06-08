@@ -29,10 +29,11 @@ import Data.ByteString.Internal (isSpaceChar8)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as S
 import Distribution.CabalSpecVersion (CabalSpecVersion (CabalSpecV1_0, CabalSpecV3_0))
+import Distribution.Client.Common (CommonStanza (..), TargetField (..), getTargetName, isComponent, splitAtPosition)
 import Distribution.Fields (
   Field (..),
   FieldLine (..),
@@ -46,7 +47,6 @@ import Distribution.PackageDescription (
   GenericPackageDescription (..),
   LibraryName (..),
   PackageDescription (..),
-  componentNameStanza,
   componentNameString,
   pkgName,
   unPackageName,
@@ -69,10 +69,6 @@ import Distribution.Simple.BuildTarget (
   resolveBuildTargets,
  )
 
--- | Just a newtype wrapper, since @Cabal-syntax@ does not provide any.
-newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
-  deriving (Eq, Ord, Show)
-
 -- | An input for 'executeAddConfig'.
 data AddConfig = AddConfig
   { cnfOrigContents :: !ByteString
@@ -93,22 +89,6 @@ data AddConfig = AddConfig
   -- Usually constructed by 'validateDependency'.
   }
   deriving (Eq, Show)
-
--- | A field in a cabal file, new content can be added to
-data TargetField
-  = -- | Corresponds to @build-depends@ in the cabal file
-    BuildDepends
-  | -- | Corresponds to @exposed-modules@ in the cabal file
-    ExposedModules
-  | -- | Corresponds to @other-modules@ in the cabal file
-    OtherModules
-  deriving (Eq, Show, Ord)
-
-getTargetName :: TargetField -> ByteString
-getTargetName = \case
-  BuildDepends -> "build-depends"
-  ExposedModules -> "exposed-modules"
-  OtherModules -> "other-modules"
 
 requiresCommas :: TargetField -> Bool
 requiresCommas = \case
@@ -281,7 +261,7 @@ resolveComponent
   :: MonadError String m
   => FilePath
   -- ^ File name, just for error reporting.
-  -> ([Field Position], GenericPackageDescription)
+  -> ([Field a], GenericPackageDescription)
   -- ^ Parsed Cabal file, as returned by 'parseCabalFile'.
   -> Maybe String
   -- ^ Component name (or default component if 'Nothing'),
@@ -357,37 +337,8 @@ validateDependency specVer d = case eitherParsec d of
         ++ "' because:\n"
         ++ err
 
--- Both lines and rows are 1-based.
-splitAtPosition :: Position -> ByteString -> (ByteString, ByteString)
-splitAtPosition (Position line row) bs
-  | line <= 1 = B.splitAt (row - 1) bs
-  | otherwise = case L.drop (line - 2) nls of
-      [] -> (bs, mempty)
-      nl : _ -> B.splitAt (nl + row) bs
-  where
-    nls = B.elemIndices '\n' bs
-
 splitAtPositionLine :: Position -> ByteString -> (ByteString, ByteString)
 splitAtPositionLine (Position line _row) = splitAtPosition (Position line 1)
-
-isComponent :: Either CommonStanza ComponentName -> Field a -> Bool
-isComponent (Right cmp) = \case
-  Section (Name _ "library") [] _subFields
-    | cmp == CLibName LMainLibName ->
-        True
-  Section (Name _ sectionName) [SecArgName _pos sectionArg] _subFields
-    | sectionName <> " " <> sectionArg == B.pack (componentNameStanza cmp) ->
-        True
-  Section (Name _ sectionName) [SecArgStr _pos sectionArg] _subFields
-    | sectionName <> " " <> sectionArg == B.pack (componentNameStanza cmp) ->
-        True
-  _ -> False
-isComponent (Left (CommonStanza commonName)) = \case
-  Section (Name _ "common") [SecArgName _pos sectionArg] _subFields ->
-    sectionArg == commonName
-  Section (Name _ "common") [SecArgStr _pos sectionArg] _subFields ->
-    sectionArg == commonName
-  _ -> False
 
 findNonImportField :: [Field Position] -> Maybe Position
 findNonImportField (Section _ _ subFields : rest) =
@@ -439,10 +390,9 @@ dropRepeatingSpaces xs = case B.uncons xs of
 -- if there are comments in between target fields.
 fancyAddAlgorithm :: AddConfig -> Maybe ByteString
 fancyAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
-  component <- L.find (isComponent cnfComponent) cnfFields
-  Section _ _ subFields <- pure component
-  buildDependsField <- L.find (isTargetField $ getTargetName cnfTargetField) subFields
-  Field _ (FieldLine firstDepPos _dep : restDeps) <- pure buildDependsField
+  subFields : _ <- pure $ mapMaybe (isComponent cnfComponent) cnfFields
+  targetField <- L.find (isTargetField $ getTargetName cnfTargetField) subFields
+  Field _ (FieldLine firstDepPos _dep : restDeps) <- pure targetField
 
   -- This is not really the second dependency:
   -- it's a dependency on the next line.
@@ -486,8 +436,7 @@ fancyAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditi
 -- is put into preserving formatting.
 niceAddAlgorithm :: AddConfig -> Maybe ByteString
 niceAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
-  component <- L.find (isComponent cnfComponent) cnfFields
-  Section _ _ subFields <- pure component
+  subFields : _ <- pure $ mapMaybe (isComponent cnfComponent) cnfFields
   targetField <- L.find (isTargetField (getTargetName cnfTargetField)) subFields
   Field _ (FieldLine pos _dep : _) <- pure targetField
 
@@ -509,7 +458,7 @@ niceAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditio
 -- This is not fancy, but very robust.
 roughAddAlgorithm :: AddConfig -> Maybe ByteString
 roughAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
-  let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
+  let componentAndRest = L.dropWhile (isNothing . isComponent cnfComponent) cnfFields
   pos@(Position _ row) <- findNonImportField componentAndRest
   let (before, after) = splitAtPositionLine pos cnfOrigContents
       lineEnding' = B.takeWhileEnd isSpaceChar8 before

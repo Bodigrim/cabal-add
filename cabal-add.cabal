@@ -28,6 +28,7 @@ source-repository head
 library
     exposed-modules:  Distribution.Client.Add
     hs-source-dirs:   src
+    other-modules:    Distribution.Client.Common
     default-language: GHC2021
     ghc-options:      -Wall
     build-depends:
