@@ -130,7 +130,7 @@ stripAdd xs = xs
 data Input = Input
   { inpFilePath :: FilePath
   , inpPackageDescription :: GenericPackageDescription
-  , inpConfig :: Config
+  , inpConfig :: AddConfig
   }
   deriving (Show)
 
@@ -165,7 +165,17 @@ mkInputs isCmpRequired cabalFile origContents args = do
       if isCmpRequired
         then Left "Target component is required"
         else (,) <$> mkCmp Nothing <*> mkDeps args
-  pure $ Input cabalFile packDescr (Config origContents fields cmp BuildDepends deps)
+  pure $
+    Input
+      cabalFile
+      packDescr
+      AddConfig
+        { cnfOrigContents = origContents
+        , cnfFields = fields
+        , cnfComponent = cmp
+        , cnfTargetField = BuildDepends
+        , cnfAdditions = deps
+        }
 
 disambiguateInputs
   :: Maybe FilePath
@@ -222,7 +232,7 @@ main = do
 
   let Input cabalFile origPackDescr cnf = input
 
-  case executeConfig (validateChanges origPackDescr) cnf of
+  case executeAddConfig (validateChanges origPackDescr) cnf of
     Nothing ->
       die $
         "Cannot extend build-depends in "

@@ -14,8 +14,8 @@ module Distribution.Client.Add (
   resolveComponent,
   CommonStanza (..),
   validateDependency,
-  Config (..),
-  executeConfig,
+  AddConfig (..),
+  executeAddConfig,
   validateChanges,
   TargetField (..),
 ) where
@@ -73,8 +73,8 @@ import Distribution.Simple.BuildTarget (
 newtype CommonStanza = CommonStanza {unCommonStanza :: ByteString}
   deriving (Eq, Ord, Show)
 
--- | An input for 'executeConfig'.
-data Config = Config
+-- | An input for 'executeAddConfig'.
+data AddConfig = AddConfig
   { cnfOrigContents :: !ByteString
   -- ^ Original Cabal file (with quirks patched,
   -- see "Distribution.PackageDescription.Quirks"),
@@ -437,8 +437,8 @@ dropRepeatingSpaces xs = case B.uncons xs of
 -- fields at the beginning, trying our best
 -- to preserve formatting. This often breaks however
 -- if there are comments in between target fields.
-fancyAlgorithm :: Config -> Maybe ByteString
-fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
+fancyAddAlgorithm :: AddConfig -> Maybe ByteString
+fancyAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
   buildDependsField <- L.find (isTargetField $ getTargetName cnfTargetField) subFields
@@ -484,8 +484,8 @@ fancyAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
 -- | Find a target section and insert new
 -- fields at the beginning. Very limited effort
 -- is put into preserving formatting.
-niceAlgorithm :: Config -> Maybe ByteString
-niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
+niceAddAlgorithm :: AddConfig -> Maybe ByteString
+niceAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   component <- L.find (isComponent cnfComponent) cnfFields
   Section _ _ subFields <- pure component
   targetField <- L.find (isTargetField (getTargetName cnfTargetField)) subFields
@@ -507,8 +507,8 @@ niceAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cn
 -- | Introduce a new target section
 -- after the last common stanza import.
 -- This is not fancy, but very robust.
-roughAlgorithm :: Config -> Maybe ByteString
-roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
+roughAddAlgorithm :: AddConfig -> Maybe ByteString
+roughAddAlgorithm AddConfig {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, cnfTargetField} = do
   let componentAndRest = L.dropWhile (not . isComponent cnfComponent) cnfFields
   pos@(Position _ row) <- findNonImportField componentAndRest
   let (before, after) = splitAtPositionLine pos cnfOrigContents
@@ -526,16 +526,16 @@ roughAlgorithm Config {cnfFields, cnfComponent, cnfOrigContents, cnfAdditions, c
 
 -- | The main workhorse, adding fields to a specified component
 -- in the Cabal file.
-executeConfig
+executeAddConfig
   :: (Either CommonStanza ComponentName -> ByteString -> Bool)
   -- ^ How to validate results? See 'validateChanges'.
-  -> Config
+  -> AddConfig
   -- ^ Input arguments.
   -> Maybe ByteString
   -- ^ Updated contents, if validated successfully.
-executeConfig validator cnf@Config {cnfComponent} =
+executeAddConfig validator cnf@AddConfig {cnfComponent} =
   L.find (validator cnfComponent) $
-    mapMaybe ($ cnf) [fancyAlgorithm, niceAlgorithm, roughAlgorithm]
+    mapMaybe ($ cnf) [fancyAddAlgorithm, niceAddAlgorithm, roughAddAlgorithm]
 
 -- | Validate that updates did not cause unexpected effects on other sections
 -- of the Cabal file.

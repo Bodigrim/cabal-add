@@ -14,7 +14,7 @@ import Data.ByteString.Char8 qualified as B
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.QQ (s)
-import Distribution.Client.Add (Config (..), TargetField (..), executeConfig, parseCabalFile)
+import Distribution.Client.Add (AddConfig (..), TargetField (..), executeAddConfig, parseCabalFile)
 import Distribution.Fields.Field (Field)
 import Distribution.PackageDescription (ComponentName (..), LibraryName (..))
 import Distribution.Parsec.Position (Position)
@@ -23,7 +23,7 @@ import Test.Tasty.Providers (IsTest (..), singleTest, testFailed, testPassed)
 
 data CabalAddTest = CabalAddTest
   { catName :: String
-  , catConfig :: Config
+  , catConfig :: AddConfig
   , catOutput :: String
   }
 
@@ -31,7 +31,7 @@ instance IsTest CabalAddTest where
   testOptions = pure []
 
   run _opts CabalAddTest {..} _yieldProgress = do
-    let outputM = executeConfig (const $ const True) catConfig
+    let outputM = executeAddConfig (const $ const True) catConfig
     case outputM of
       Nothing -> pure $ testFailed "config could not be applied"
       Just output ->
@@ -51,7 +51,7 @@ caseMultipleBuildDependencies1 =
     CabalAddTest
       { catName = "add multiple dependencies 1"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CLibName LMainLibName
             , cnfAdditions = NE.fromList ["foo < 1 && >0.7", "baz ^>= 2.0"]
             , cnfTargetField = BuildDepends
@@ -91,7 +91,7 @@ caseMultipleExposedModules1 =
     CabalAddTest
       { catName = "add multiple exposed modules 1"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CLibName LMainLibName
             , cnfAdditions = NE.fromList ["Test.Mod1", "Test.Mod2"]
             , cnfTargetField = ExposedModules
@@ -131,7 +131,7 @@ caseMultipleExposedModulesUsingSpaces =
     CabalAddTest
       { catName = "add multiple exposed modules with spaces"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CLibName LMainLibName
             , cnfAdditions = NE.fromList ["Test.Mod1", "Test.Mod2"]
             , cnfTargetField = ExposedModules
@@ -171,7 +171,7 @@ caseMultipleOtherModules =
     CabalAddTest
       { catName = "add multiple other modules"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CTestName "testss"
             , cnfAdditions = NE.fromList ["Test.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
@@ -225,7 +225,7 @@ caseMultipleOtherModulesUsingSpaces =
     CabalAddTest
       { catName = "add multiple other modules with space separators"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CTestName "testss"
             , cnfAdditions = NE.fromList ["Test.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
@@ -281,7 +281,7 @@ caseMultipleOtherModulesUsingLeadingCommas =
     CabalAddTest
       { catName = "add multiple other modules preserving leading commas"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CTestName "testss"
             , cnfAdditions = NE.fromList ["Test.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
@@ -335,7 +335,7 @@ caseMultipleOtherModulesUsingLeadingSpaces =
     CabalAddTest
       { catName = "add multiple other modules preserving leading spaces"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CTestName "testss"
             , cnfAdditions = NE.fromList ["Test.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
@@ -389,7 +389,7 @@ caseMultipleOtherModulesWithImportFields =
     CabalAddTest
       { catName = "add multiple other modules with import field"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CLibName LMainLibName
             , cnfAdditions = NE.fromList ["This.Dir.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
@@ -438,7 +438,7 @@ caseMultipleOtherModulesWithImportFields2 =
     CabalAddTest
       { catName = "add multiple other modules with capitalised import field"
       , catConfig =
-          Config
+          AddConfig
             { cnfComponent = Right $ CLibName LMainLibName
             , cnfAdditions = NE.fromList ["This.Dir.Mod1", "Mod3"]
             , cnfTargetField = OtherModules
