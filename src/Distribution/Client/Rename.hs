@@ -91,7 +91,7 @@ executeRenameConfig validator RenameConfig {cnfFields, cnfComponent, cnfOrigCont
       where
         (pref, rest) = B.breakSubstring cnfRenameFrom hay
         suff = B.drop (B.length cnfRenameFrom) rest
-        isTokenBoundary c = (isSpace c || isPunctuation c) && c /= '-' && c /= '.'
+        isTokenBoundary c = (isSpace c || isPunctuation c || c `elem` "^>=<") && c /= '-' && c /= '.'
         startsWithBoundary = maybe True (isTokenBoundary . snd) (B.unsnoc pref)
         endsWithBoundary = maybe True (isTokenBoundary . fst) (B.uncons suff)
 
