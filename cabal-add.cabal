@@ -26,7 +26,10 @@ source-repository head
     location: https://github.com/Bodigrim/cabal-add.git
 
 library
-    exposed-modules:  Distribution.Client.Add
+    exposed-modules:
+        Distribution.Client.Add
+        Distribution.Client.Rename
+
     hs-source-dirs:   src
     other-modules:    Distribution.Client.Common
     default-language: GHC2021
