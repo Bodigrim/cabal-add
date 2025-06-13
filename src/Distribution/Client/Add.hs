@@ -76,7 +76,7 @@ data AddConfig = AddConfig
   -- see "Distribution.PackageDescription.Quirks"),
   -- must be in sync with 'cnfFields'.
   , cnfFields :: ![Field Position]
-  -- ^ Parsed (by 'readFields' or, more specifically, by 'parseCabalFile')
+  -- ^ Parsed (by 'Distribution.Fields.readFields' or, more specifically, by 'parseCabalFile')
   -- representation of the Cabal file,
   -- must be in sync with 'cnfOrigContents'.
   , cnfComponent :: !(Either CommonStanza ComponentName)
