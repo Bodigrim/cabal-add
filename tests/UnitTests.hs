@@ -15,6 +15,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.String.QQ (s)
 import Distribution.Client.Add (AddConfig (..), TargetField (..), executeAddConfig, parseCabalFile)
+import Distribution.Client.Rename (RenameConfig (..), executeRenameConfig)
 import Distribution.Fields.Field (Field)
 import Distribution.PackageDescription (ComponentName (..), LibraryName (..))
 import Distribution.Parsec.Position (Position)
@@ -40,6 +41,25 @@ instance IsTest CabalAddTest where
             then testPassed ""
             else testFailed $ prettyDiff $ getDiff (lines catOutput) (lines (B.unpack output))
 
+data CabalRenameTest = CabalRenameTest
+  { crtName :: String
+  , crtConfig :: RenameConfig
+  , crtOutput :: String
+  }
+
+instance IsTest CabalRenameTest where
+  testOptions = pure []
+
+  run _opts CabalRenameTest {..} _yieldProgress = do
+    let outputM = executeRenameConfig (const $ const True) crtConfig
+    case outputM of
+      Nothing -> pure $ testFailed "config could not be applied"
+      Just output ->
+        pure $
+          if B.unpack output == crtOutput
+            then testPassed ""
+            else testFailed $ prettyDiff $ getDiff (lines crtOutput) (lines (B.unpack output))
+
 parseCabalFileOrError :: B.ByteString -> [Field Position]
 parseCabalFileOrError inContents = case parseCabalFile "" inContents of
   Right (fields, _) -> fields
@@ -47,7 +67,7 @@ parseCabalFileOrError inContents = case parseCabalFile "" inContents of
 
 caseMultipleBuildDependencies1 :: TestTree
 caseMultipleBuildDependencies1 =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple dependencies 1"
       , catConfig =
@@ -87,7 +107,7 @@ library
 
 caseMultipleExposedModules1 :: TestTree
 caseMultipleExposedModules1 =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple exposed modules 1"
       , catConfig =
@@ -127,7 +147,7 @@ library
 
 caseMultipleExposedModulesUsingSpaces :: TestTree
 caseMultipleExposedModulesUsingSpaces =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple exposed modules with spaces"
       , catConfig =
@@ -167,7 +187,7 @@ library
 
 caseMultipleOtherModules :: TestTree
 caseMultipleOtherModules =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules"
       , catConfig =
@@ -221,7 +241,7 @@ test-suite testss
 
 caseMultipleOtherModulesUsingSpaces :: TestTree
 caseMultipleOtherModulesUsingSpaces =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules with space separators"
       , catConfig =
@@ -277,7 +297,7 @@ library
 
 caseMultipleOtherModulesUsingLeadingCommas :: TestTree
 caseMultipleOtherModulesUsingLeadingCommas =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules preserving leading commas"
       , catConfig =
@@ -331,7 +351,7 @@ library
 
 caseMultipleOtherModulesUsingLeadingSpaces :: TestTree
 caseMultipleOtherModulesUsingLeadingSpaces =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules preserving leading spaces"
       , catConfig =
@@ -385,7 +405,7 @@ library
 
 caseMultipleOtherModulesWithImportFields :: TestTree
 caseMultipleOtherModulesWithImportFields =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules with import field"
       , catConfig =
@@ -434,7 +454,7 @@ library
 
 caseMultipleOtherModulesWithImportFields2 :: TestTree
 caseMultipleOtherModulesWithImportFields2 =
-  mkTest $
+  mkAddTest $
     CabalAddTest
       { catName = "add multiple other modules with capitalised import field"
       , catConfig =
@@ -481,6 +501,106 @@ library
   exposed-modules: Foo
 |]
 
+caseRenameDependency1 :: TestTree
+caseRenameDependency1 =
+  mkRenameTest $
+    CabalRenameTest
+      { crtName = "rename dependency"
+      , crtConfig =
+          RenameConfig
+            { cnfComponent = Right $ CLibName LMainLibName
+            , cnfTargetField = BuildDepends
+            , cnfFields = parseCabalFileOrError inContents
+            , cnfOrigContents = inContents
+            , cnfRenameFrom = "base"
+            , cnfRenameTo = "relude"
+            }
+      , crtOutput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    relude >=4.15 && <5,
+    base-foo,
+    foo-base
+
+benchmark foo
+  type: exitcode-stdio-1.0
+  main-is: Main
+  build-depends: base
+|]
+      }
+  where
+    inContents =
+      [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    base >=4.15 && <5,
+    base-foo,
+    foo-base
+
+benchmark foo
+  type: exitcode-stdio-1.0
+  main-is: Main
+  build-depends: base
+|]
+
+caseRenameExposedModule1 :: TestTree
+caseRenameExposedModule1 =
+  mkRenameTest $
+    CabalRenameTest
+      { crtName = "rename exposed module"
+      , crtConfig =
+          RenameConfig
+            { cnfComponent = Right $ CLibName LMainLibName
+            , cnfTargetField = ExposedModules
+            , cnfFields = parseCabalFileOrError inContents
+            , cnfOrigContents = inContents
+            , cnfRenameFrom = "Data.Foo"
+            , cnfRenameTo = "Data.Quux"
+            }
+      , crtOutput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  exposed-modules: Data.Quux, Data.Foo.Bar, Data.Foo.Baz
+
+benchmark foo
+  type: exitcode-stdio-1.0
+  main-is: Main
+  exposed-modules: Data.Foo
+|]
+      }
+  where
+    inContents =
+      [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  exposed-modules: Data.Foo, Data.Foo.Bar, Data.Foo.Baz
+
+benchmark foo
+  type: exitcode-stdio-1.0
+  main-is: Main
+  exposed-modules: Data.Foo
+|]
+
 prettyDiff :: [Diff String] -> String
 prettyDiff =
   unlines
@@ -491,8 +611,11 @@ prettyDiff =
           Both xs _ -> Just $ ' ' : xs
       )
 
-mkTest :: CabalAddTest -> TestTree
-mkTest cat = singleTest (catName cat) cat
+mkAddTest :: CabalAddTest -> TestTree
+mkAddTest cat = singleTest (catName cat) cat
+
+mkRenameTest :: CabalRenameTest -> TestTree
+mkRenameTest cat = singleTest (crtName cat) cat
 
 main :: IO ()
 main =
@@ -508,4 +631,6 @@ main =
       , caseMultipleOtherModulesUsingLeadingSpaces
       , caseMultipleOtherModulesWithImportFields
       , caseMultipleOtherModulesWithImportFields2
+      , caseRenameDependency1
+      , caseRenameExposedModule1
       ]
