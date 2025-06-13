@@ -505,7 +505,7 @@ caseRenameDependency1 :: TestTree
 caseRenameDependency1 =
   mkRenameTest $
     CabalRenameTest
-      { crtName = "rename dependency"
+      { crtName = "rename dependency 1"
       , crtConfig =
           RenameConfig
             { cnfComponent = Right $ CLibName LMainLibName
@@ -552,6 +552,45 @@ benchmark foo
   type: exitcode-stdio-1.0
   main-is: Main
   build-depends: base
+|]
+
+caseRenameDependency2 :: TestTree
+caseRenameDependency2 =
+  mkRenameTest $
+    CabalRenameTest
+      { crtName = "rename dependency 2"
+      , crtConfig =
+          RenameConfig
+            { cnfComponent = Right $ CLibName LMainLibName
+            , cnfTargetField = BuildDepends
+            , cnfFields = parseCabalFileOrError inContents
+            , cnfOrigContents = inContents
+            , cnfRenameFrom = "base"
+            , cnfRenameTo = "relude"
+            }
+      , crtOutput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    relude>=4, relude<4, relude==4.9.0.0, relude^>=4.0, relude(>4 && <5)
+|]
+      }
+  where
+    inContents =
+      [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  build-depends:
+    base>=4, base<4, base==4.9.0.0, base^>=4.0, base(>4 && <5)
 |]
 
 caseRenameExposedModule1 :: TestTree
@@ -632,5 +671,6 @@ main =
       , caseMultipleOtherModulesWithImportFields
       , caseMultipleOtherModulesWithImportFields2
       , caseRenameDependency1
+      , caseRenameDependency2
       , caseRenameExposedModule1
       ]
