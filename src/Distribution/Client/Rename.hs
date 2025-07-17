@@ -16,9 +16,9 @@ module Distribution.Client.Rename (
 ) where
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Builder qualified as Builder
 import Data.ByteString.Char8 qualified as B
 import Data.Char (isPunctuation, isSpace)
-import Data.Foldable (fold)
 import Data.List qualified as L
 import Distribution.Client.Add (
   TargetField (..),
@@ -77,14 +77,14 @@ executeRenameConfig !_ RenameConfig {cnfRenameFrom}
 executeRenameConfig validator RenameConfig {cnfFields, cnfComponent, cnfOrigContents, cnfRenameFrom, cnfRenameTo, cnfTargetField} = do
   let fieldsWithSource = annotateFieldsWithSource cnfOrigContents cnfFields
       fieldsWithSource' = map replaceInSection fieldsWithSource
-      newContents = foldMap fold fieldsWithSource'
+      newContents = B.toStrict $ Builder.toLazyByteString $ foldMap (foldMap Builder.byteString) fieldsWithSource'
   if validator cnfComponent newContents then Just newContents else Nothing
   where
     replaceInBS :: ByteString -> ByteString
     replaceInBS hay
       | B.null rest =
           hay
-      | not startsWithBoundary || not endsWithBoundary =
+      | not startsWithBoundary || not endsWithBoundary || B.elem '\n' pref =
           pref <> cnfRenameFrom <> replaceInBS suff
       | otherwise =
           pref <> cnfRenameTo <> replaceInBS suff

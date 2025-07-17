@@ -640,6 +640,49 @@ benchmark foo
   exposed-modules: Data.Foo
 |]
 
+caseRenameExposedModule2 :: TestTree
+caseRenameExposedModule2 =
+  mkRenameTest $
+    CabalRenameTest
+      { crtName = "rename exposed module with comments"
+      , crtConfig =
+          RenameConfig
+            { cnfComponent = Right $ CLibName LMainLibName
+            , cnfTargetField = ExposedModules
+            , cnfFields = parseCabalFileOrError inContents
+            , cnfOrigContents = inContents
+            , cnfRenameFrom = "Data.Foo"
+            , cnfRenameTo = "Data.Quux"
+            }
+      , crtOutput =
+          [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  exposed-modules:
+    -- Data.Foo as a comment
+    Data.Quux
+    -- Data.Foo again
+|]
+      }
+  where
+    inContents =
+      [s|
+name:          dummy
+version:       0.13.0.0
+cabal-version: 2.0
+build-type:    Simple
+
+library
+  exposed-modules:
+    -- Data.Foo as a comment
+    Data.Foo
+    -- Data.Foo again
+|]
+
 prettyDiff :: [Diff String] -> String
 prettyDiff =
   unlines
@@ -673,4 +716,5 @@ main =
       , caseRenameDependency1
       , caseRenameDependency2
       , caseRenameExposedModule1
+      , caseRenameExposedModule2
       ]
