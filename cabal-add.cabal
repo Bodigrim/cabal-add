@@ -6,7 +6,8 @@ license-file:    LICENSE
 maintainer:      andrew.lelechenko@gmail.com
 author:          Bodigrim
 tested-with:
-    ghc ==9.12.2 ghc ==9.10.2 ghc ==9.8.4 ghc ==9.6.7 ghc ==9.4.8
+    ghc ==9.14.1 ghc ==9.12.2 ghc ==9.10.3 ghc ==9.8.4 ghc ==9.6.7
+    ghc ==9.4.8
 
 synopsis:        Extend Cabal build-depends from the command line
 description:
@@ -55,8 +56,7 @@ executable cabal-add
         Cabal-syntax,
         directory <1.4,
         filepath <1.6,
-        optparse-applicative >=0.16 && <0.20,
-        process <1.7
+        optparse-applicative >=0.16 && <0.20
 
 test-suite cabal-add-tests
     type:               exitcode-stdio-1.0
@@ -67,7 +67,7 @@ test-suite cabal-add-tests
     ghc-options:        -Wall
     build-depends:
         base <5,
-        bytestring >= 0.11.2,
+        bytestring >=0.11.2,
         Diff >=0.4,
         directory,
         file-io,
@@ -89,7 +89,5 @@ test-suite cabal-add-unit-tests
         Cabal,
         cabal-add,
         Diff >=0.4,
-        directory,
-        process,
         string-qq,
         tasty
