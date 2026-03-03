@@ -2,21 +2,30 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
+{- HLINT ignore "Avoid restricted function" -}
+
 -- |
 -- Copyright:   (c) 2023 Bodigrim
 -- License:     BSD-3-Clause
 module Main (main) where
 
 import Data.Algorithm.Diff (Diff, PolyDiff (..), getDiff)
+import Data.ByteString.Lazy (LazyByteString)
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Char (isAlpha)
 import Data.Maybe (mapMaybe)
+import Data.String (fromString)
 import Data.String.QQ (s)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode (..))
-import System.IO.Temp (withSystemTempDirectory)
+import System.File.OsPath (readFile, writeFile)
+import System.IO.Temp.OsPath (withSystemTempDirectory)
+import System.IO.Unsafe (unsafePerformIO)
+import System.OsPath (decodeFS, encodeFS, osp, (<.>), (</>))
 import System.Process (cwd, env, proc, readCreateProcessWithExitCode)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.Providers (IsTest (..), singleTest, testFailed, testPassed)
+import Prelude hiding (readFile, writeFile)
 
 data CabalAddTest = CabalAddTest
   { catName :: String
@@ -33,29 +42,34 @@ instance IsTest CabalAddTest where
     case mCabalAddExe of
       Nothing -> pure $ testFailed "cabal-add executable is not in PATH"
       Just cabalAddExe -> do
-        let template = map (\c -> if isAlpha c then c else '_') catName
+        let template = unsafePerformIO $ encodeFS $ map (\c -> if isAlpha c then c else '_') catName
         withSystemTempDirectory template $ \tempDir -> do
-          let cabalFileName = tempDir ++ "/" ++ template ++ ".cabal"
-          writeFile cabalFileName catInput
-          let crpr = (proc cabalAddExe catArgs) {cwd = Just tempDir, env = Just catEnv}
+          let cabalFileName = tempDir </> template <.> [osp|cabal|]
+          writeFile cabalFileName (fromString catInput)
+          let crpr =
+                (proc cabalAddExe catArgs)
+                  { cwd = Just $ unsafePerformIO $ decodeFS tempDir
+                  , env = Just catEnv
+                  }
           (code, _out, err) <- readCreateProcessWithExitCode crpr ""
           case code of
             ExitFailure {} -> pure $ testFailed err
             ExitSuccess -> do
               output <- readFile cabalFileName
+              let catOutput' = fromString catOutput
               pure $
-                if output == catOutput
+                if output == catOutput'
                   then testPassed ""
-                  else testFailed $ prettyDiff $ getDiff (lines catOutput) (lines output)
+                  else testFailed $ BL.unpack $ prettyDiff $ getDiff (BL.lines catOutput') (BL.lines output)
 
-prettyDiff :: [Diff String] -> String
+prettyDiff :: [Diff LazyByteString] -> LazyByteString
 prettyDiff =
-  unlines
+  BL.unlines
     . mapMaybe
       ( \case
-          First xs -> Just $ '-' : xs
-          Second ys -> Just $ '+' : ys
-          Both xs _ -> Just $ ' ' : xs
+          First xs -> Just $ BL.cons '-' xs
+          Second ys -> Just $ BL.cons '+' ys
+          Both xs _ -> Just $ BL.cons ' ' xs
       )
 
 mkTest :: CabalAddTest -> TestTree

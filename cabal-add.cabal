@@ -67,12 +67,15 @@ test-suite cabal-add-tests
     ghc-options:        -Wall
     build-depends:
         base <5,
+        bytestring >= 0.11.2,
         Diff >=0.4,
         directory,
+        file-io,
+        filepath,
         process,
         string-qq,
         tasty,
-        temporary
+        temporary-ospath
 
 test-suite cabal-add-unit-tests
     type:             exitcode-stdio-1.0
@@ -89,5 +92,4 @@ test-suite cabal-add-unit-tests
         directory,
         process,
         string-qq,
-        tasty,
-        temporary
+        tasty
