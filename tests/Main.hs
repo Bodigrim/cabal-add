@@ -16,7 +16,7 @@ import Data.Char (isAlpha)
 import Data.Maybe (mapMaybe)
 import Data.String (fromString)
 import Data.String.QQ (s)
-import System.Directory (findExecutable)
+import System.Directory (findExecutable, makeAbsolute)
 import System.Exit (ExitCode (..))
 import System.File.OsPath (readFile, writeFile)
 import System.IO.Temp.OsPath (withSystemTempDirectory)
@@ -38,7 +38,7 @@ data CabalAddTest = CabalAddTest
 instance IsTest CabalAddTest where
   testOptions = pure []
   run _opts CabalAddTest {..} _yieldProgress = do
-    mCabalAddExe <- findExecutable "cabal-add"
+    mCabalAddExe <- findExecutable "cabal-add" >>= traverse makeAbsolute
     case mCabalAddExe of
       Nothing -> pure $ testFailed "cabal-add executable is not in PATH"
       Just cabalAddExe -> do
