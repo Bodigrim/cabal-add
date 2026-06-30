@@ -64,6 +64,7 @@ test-suite cabal-add-tests
     build-tool-depends: cabal-add:cabal-add
     hs-source-dirs:     tests
     default-language:   GHC2021
+    other-extensions:   MultilineStrings
     ghc-options:        -Wall
     build-depends:
         base <5,
@@ -73,15 +74,15 @@ test-suite cabal-add-tests
         file-io,
         filepath,
         process,
-        string-qq,
         tasty,
-        temporary-ospath
+        temporary-ospath <1.4
 
 test-suite cabal-add-unit-tests
     type:             exitcode-stdio-1.0
     main-is:          UnitTests.hs
     hs-source-dirs:   tests/
     default-language: GHC2021
+    other-extensions: MultilineStrings
     ghc-options:      -Wall
     build-depends:
         base <5,
@@ -89,5 +90,4 @@ test-suite cabal-add-unit-tests
         Cabal,
         cabal-add,
         Diff >=0.4,
-        string-qq,
         tasty

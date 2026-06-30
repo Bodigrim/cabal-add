@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultilineStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -15,7 +16,6 @@ import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Char (isAlpha)
 import Data.Maybe (mapMaybe)
 import Data.String (fromString)
-import Data.String.QQ (s)
 import System.Directory (findExecutable)
 import System.Exit (ExitCode (..))
 import System.File.OsPath (readFile, writeFile)
@@ -53,12 +53,12 @@ instance IsTest CabalAddTest where
                   }
           (code, _out, err) <- readCreateProcessWithExitCode crpr ""
           case code of
-            ExitFailure {} -> pure $ testFailed err
+            ExitFailure errCode -> pure $ testFailed $ "ExitFailure " ++ show errCode ++ "\n" ++ err
             ExitSuccess -> do
               output <- readFile cabalFileName
               let catOutput' = fromString catOutput
               pure $
-                if output == catOutput'
+                if BL.lines output == BL.lines catOutput'
                   then testPassed ""
                   else testFailed $ BL.unpack $ prettyDiff $ getDiff (BL.lines catOutput') (BL.lines output)
 
@@ -83,29 +83,29 @@ caseMultipleDependencies1 =
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    foo < 1 && >0.7,
-    baz ^>= 2.0,
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              foo < 1 && >0.7,
+              baz ^>= 2.0,
+              base >=4.15 && <5
+          """
       }
 
 caseMultipleDependencies2 :: TestTree
@@ -116,25 +116,25 @@ caseMultipleDependencies2 =
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends: base >=4.15 && <5
-|]
+          library
+            build-depends: base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends: foo < 1 && >0.7, baz ^>= 2.0, base >=4.15 && <5
-|]
+          library
+            build-depends: foo < 1 && >0.7, baz ^>= 2.0, base >=4.15 && <5
+          """
       }
 
 caseMultipleDependencies3 :: TestTree
@@ -145,29 +145,29 @@ caseMultipleDependencies3 =
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:   base >=4.15 && <5,
-                   containers
-|]
+          library
+            build-depends:   base >=4.15 && <5,
+                             containers
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:   foo < 1 && >0.7,
-                   baz ^>= 2.0,
-                   base >=4.15 && <5,
-                   containers
-|]
+          library
+            build-depends:   foo < 1 && >0.7,
+                             baz ^>= 2.0,
+                             base >=4.15 && <5,
+                             containers
+          """
       }
 
 caseMultipleDependencies4 :: TestTree
@@ -178,31 +178,31 @@ caseMultipleDependencies4 =
       , catArgs = ["foo < 1 && >0.7", "baz ^>= 2.0"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:   base >=4.15 && <5
-                 , containers
-                 , deepseq
-|]
+          library
+            build-depends:   base >=4.15 && <5
+                           , containers
+                           , deepseq
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:   foo < 1 && >0.7
-                 , baz ^>= 2.0
-                 , base >=4.15 && <5
-                 , containers
-                 , deepseq
-|]
+          library
+            build-depends:   foo < 1 && >0.7
+                           , baz ^>= 2.0
+                           , base >=4.15 && <5
+                           , containers
+                           , deepseq
+          """
       }
 
 caseLibraryInDescription :: TestTree
@@ -213,33 +213,33 @@ caseLibraryInDescription =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
-description:
-  A library of basic functionality.
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
+          description:
+            A library of basic functionality.
 
-library
-  build-depends:
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
-description:
-  A library of basic functionality.
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
+          description:
+            A library of basic functionality.
 
-library
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseImportFields1 :: TestTree
@@ -250,34 +250,34 @@ caseImportFields1 =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  import: foo
-  exposed-modules: Foo
-|]
+          library
+            import: foo
+            exposed-modules: Foo
+          """
       , catOutput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  import: foo
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+          library
+            import: foo
+            build-depends: foo < 1 && >0.7, quux < 1
+            exposed-modules: Foo
+          """
       }
 
 caseImportFields2 :: TestTree
@@ -288,34 +288,34 @@ caseImportFields2 =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  Import : foo
-  exposed-modules: Foo
-|]
+          library
+            Import : foo
+            exposed-modules: Foo
+          """
       , catOutput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  Import : foo
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+          library
+            Import : foo
+            build-depends: foo < 1 && >0.7, quux < 1
+            exposed-modules: Foo
+          """
       }
 
 caseImportFields3 :: TestTree
@@ -326,32 +326,32 @@ caseImportFields3 =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  Import : foo
-|]
+          library
+            Import : foo
+          """
       , catOutput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
+          common foo
+            build-depends: bar
 
-library
-  Import : foo
-  build-depends: foo < 1 && >0.7, quux < 1
-|]
+          library
+            Import : foo
+            build-depends: foo < 1 && >0.7, quux < 1
+          """
       }
 
 caseSublibraryTarget1 :: TestTree
@@ -362,29 +362,29 @@ caseSublibraryTarget1 =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library baz
-  build-depends:
-    base >=4.15 && <5
-|]
+          library baz
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library baz
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          library baz
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseSublibraryTarget2 :: TestTree
@@ -395,37 +395,37 @@ caseSublibraryTarget2 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
+          library
+            build-depends:
+              base >=4.15 && <5
 
-library baz
-  build-depends:
-    base >=4.15 && <5
-|]
+          library baz
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
+          library
+            build-depends:
+              base >=4.15 && <5
 
-library baz
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          library baz
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseExecutableTarget1 :: TestTree
@@ -436,31 +436,31 @@ caseExecutableTarget1 =
       , catArgs = ["exe", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseExecutableTarget2 :: TestTree
@@ -471,31 +471,31 @@ caseExecutableTarget2 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseExecutableTarget3 :: TestTree
@@ -506,31 +506,31 @@ caseExecutableTarget3 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable "baz"
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable "baz"
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable "baz"
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable "baz"
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseExecutableTarget4 :: TestTree
@@ -541,37 +541,37 @@ caseExecutableTarget4 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseTestTarget1 :: TestTree
@@ -582,39 +582,39 @@ caseTestTarget1 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-test-suite baz
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          test-suite baz
+            type: exitcode-stdio-1.0
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-test-suite baz
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          test-suite baz
+            type: exitcode-stdio-1.0
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseTestTarget2 :: TestTree
@@ -625,39 +625,39 @@ caseTestTarget2 =
       , catArgs = ["test:baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-test-suite baz
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          test-suite baz
+            type: exitcode-stdio-1.0
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common baz
-  language: Haskell2010
+          common baz
+            language: Haskell2010
 
-test-suite baz
-  type: exitcode-stdio-1.0
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          test-suite baz
+            type: exitcode-stdio-1.0
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseCommonStanzaTarget1 :: TestTree
@@ -668,26 +668,26 @@ caseCommonStanzaTarget1 =
       , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common foo
-  language: Haskell2010
-|]
+          common foo
+            language: Haskell2010
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-common foo
-  build-depends: foo < 1 && >0.7, quux < 1
-  language: Haskell2010
-|]
+          common foo
+            build-depends: foo < 1 && >0.7, quux < 1
+            language: Haskell2010
+          """
       }
 
 caseCommonStanzaTarget2 :: TestTree
@@ -698,33 +698,33 @@ caseCommonStanzaTarget2 =
       , catArgs = ["foo", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Common    foo
-  language: Haskell2010
-  build-depends:
-    , base
-    , containers
-|]
+          Common    foo
+            language: Haskell2010
+            build-depends:
+              , base
+              , containers
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Common    foo
-  language: Haskell2010
-  build-depends:
-    , foo < 1 && >0.7
-    , quux < 1
-    , base
-    , containers
-|]
+          Common    foo
+            language: Haskell2010
+            build-depends:
+              , foo < 1 && >0.7
+              , quux < 1
+              , base
+              , containers
+          """
       }
 
 caseTwoSpacesInStanza :: TestTree
@@ -735,31 +735,31 @@ caseTwoSpacesInStanza =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable  baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable  baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable  baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable  baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseTitleCaseStanza1 :: TestTree
@@ -770,29 +770,29 @@ caseTitleCaseStanza1 =
       , catArgs = ["foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Library
-  build-depends:
-    base >=4.15 && <5
-|]
+          Library
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Library
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          Library
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseTitleCaseStanza2 :: TestTree
@@ -803,31 +803,31 @@ caseTitleCaseStanza2 =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Executable baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          Executable baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-Executable baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          Executable baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseTitleCaseBuildDepends :: TestTree
@@ -838,31 +838,31 @@ caseTitleCaseBuildDepends =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  Build-Depends:
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            Build-Depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-  Build-Depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            Build-Depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 caseSharedComponentPrefixes :: TestTree
@@ -873,41 +873,41 @@ caseSharedComponentPrefixes =
       , catArgs = ["baz", "foo < 1 && >0.7", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable bazzzy
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
+          executable bazzzy
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.1.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-executable bazzzy
-  main-is: Main.hs
-  build-depends:
-    base >=4.15 && <5
+          executable bazzzy
+            main-is: Main.hs
+            build-depends:
+              base >=4.15 && <5
 
-executable baz
-  main-is: Main.hs
-  build-depends:
-    foo < 1 && >0.7,
-    quux < 1,
-    base >=4.15 && <5
-|]
+          executable baz
+            main-is: Main.hs
+            build-depends:
+              foo < 1 && >0.7,
+              quux < 1,
+              base >=4.15 && <5
+          """
       }
 
 windowsLineEndings :: TestTree
@@ -919,27 +919,27 @@ windowsLineEndings =
       , catEnv = mempty
       , catInput =
           convertToWindowsLineEndings
-            [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+            """
+            name:          dummy
+            version:       0.1.0.0
+            cabal-version: 2.0
+            build-type:    Simple
 
-executable baz
-  main-is: Main.hs
-|]
+            executable baz
+              main-is: Main.hs
+            """
       , catOutput =
           convertToWindowsLineEndings
-            [s|
-name:          dummy
-version:       0.1.0.0
-cabal-version: 2.0
-build-type:    Simple
+            """
+            name:          dummy
+            version:       0.1.0.0
+            cabal-version: 2.0
+            build-type:    Simple
 
-executable baz
-  build-depends: foo < 1 && >0.7, quux < 1
-  main-is: Main.hs
-|]
+            executable baz
+              build-depends: foo < 1 && >0.7, quux < 1
+              main-is: Main.hs
+            """
       }
   where
     convertToWindowsLineEndings :: String -> String
@@ -953,29 +953,29 @@ caseLeadingComma1 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends:
-    , base >=4.15 && <5
-|]
+          library
+            build-depends:
+              , base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends:
-    , baz ^>= 2.0
-    , quux < 1
-    , base >=4.15 && <5
-|]
+          library
+            build-depends:
+              , baz ^>= 2.0
+              , quux < 1
+              , base >=4.15 && <5
+          """
       }
 
 caseLeadingComma2 :: TestTree
@@ -986,25 +986,25 @@ caseLeadingComma2 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: ,base >=4.15 && <5
-|]
+          library
+            build-depends: ,base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: ,baz ^>= 2.0 ,quux < 1 ,base >=4.15 && <5
-|]
+          library
+            build-depends: ,baz ^>= 2.0 ,quux < 1 ,base >=4.15 && <5
+          """
       }
 
 caseLeadingComma3 :: TestTree
@@ -1015,29 +1015,29 @@ caseLeadingComma3 =
       , catArgs = ["baz ^>= 2.0", "quux > 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: ,base >=4.15 && <5
-                 ,containers
-|]
+          library
+            build-depends: ,base >=4.15 && <5
+                           ,containers
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: ,baz ^>= 2.0
-                 ,quux > 1
-                 ,base >=4.15 && <5
-                 ,containers
-|]
+          library
+            build-depends: ,baz ^>= 2.0
+                           ,quux > 1
+                           ,base >=4.15 && <5
+                           ,containers
+          """
       }
 
 caseConditionalBuildDepends :: TestTree
@@ -1048,30 +1048,30 @@ caseConditionalBuildDepends =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  if impl(ghc >= 9.6)
-    build-depends:
-      base >=4.15 && <5
-|]
+          library
+            if impl(ghc >= 9.6)
+              build-depends:
+                base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: baz ^>= 2.0, quux < 1
-  if impl(ghc >= 9.6)
-    build-depends:
-      base >=4.15 && <5
-|]
+          library
+            build-depends: baz ^>= 2.0, quux < 1
+            if impl(ghc >= 9.6)
+              build-depends:
+                base >=4.15 && <5
+          """
       }
 
 caseEmptyComponent1 :: TestTree
@@ -1082,31 +1082,31 @@ caseEmptyComponent1 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
+          library
 
-executable bar
-  main-is: Bar.hs
-|]
+          executable bar
+            main-is: Bar.hs
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
+          library
 
-  build-depends: baz ^>= 2.0, quux < 1
+            build-depends: baz ^>= 2.0, quux < 1
 
-executable bar
-  main-is: Bar.hs
-|]
+          executable bar
+            main-is: Bar.hs
+          """
       }
 
 caseEmptyComponent2 :: TestTree
@@ -1117,24 +1117,24 @@ caseEmptyComponent2 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-|]
+          library
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: baz ^>= 2.0, quux < 1
-|]
+          library
+            build-depends: baz ^>= 2.0, quux < 1
+          """
       }
 
 caseEmptyComponent3 :: TestTree
@@ -1145,23 +1145,23 @@ caseEmptyComponent3 =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library|]
+          library"""
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: baz ^>= 2.0, quux < 1
-|]
+          library
+            build-depends: baz ^>= 2.0, quux < 1
+          """
       }
 
 caseEmptyBuildDepends :: TestTree
@@ -1172,26 +1172,26 @@ caseEmptyBuildDepends =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends:
-|]
+          library
+            build-depends:
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-library
-  build-depends: baz ^>= 2.0, quux < 1
-  build-depends:
-|]
+          library
+            build-depends: baz ^>= 2.0, quux < 1
+            build-depends:
+          """
       }
 
 caseComponentInBraces :: TestTree
@@ -1202,27 +1202,27 @@ caseComponentInBraces =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-Library {
-  Build-Depends: base >= 4 && < 5
-}
-|]
+          Library {
+            Build-Depends: base >= 4 && < 5
+          }
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-Library {
-  Build-Depends: baz ^>= 2.0, quux < 1, base >= 4 && < 5
-}
-|]
+          Library {
+            Build-Depends: baz ^>= 2.0, quux < 1, base >= 4 && < 5
+          }
+          """
       }
 
 caseCommentsWithCommas :: TestTree
@@ -1233,33 +1233,33 @@ caseCommentsWithCommas =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  main-is:       Main.hs
-  build-depends:    magda,
-                    -- Something, which
-                    -- contains commas.
-                    base
-|]
+          executable dagda
+            main-is:       Main.hs
+            build-depends:    magda,
+                              -- Something, which
+                              -- contains commas.
+                              base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  main-is:       Main.hs
-  build-depends:    baz ^>= 2.0, quux < 1, magda,
-                    -- Something, which
-                    -- contains commas.
-                    base
-|]
+          executable dagda
+            main-is:       Main.hs
+            build-depends:    baz ^>= 2.0, quux < 1, magda,
+                              -- Something, which
+                              -- contains commas.
+                              base
+          """
       }
 
 caseCommentsWithoutCommas :: TestTree
@@ -1270,31 +1270,31 @@ caseCommentsWithoutCommas =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  main-is:       Main.hs
-  build-depends:  magda,
-                  -- Something without commas
-                  base
-|]
+          executable dagda
+            main-is:       Main.hs
+            build-depends:  magda,
+                            -- Something without commas
+                            base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  main-is:       Main.hs
-  build-depends:  baz ^>= 2.0, quux < 1, magda,
-                  -- Something without commas
-                  base
-|]
+          executable dagda
+            main-is:       Main.hs
+            build-depends:  baz ^>= 2.0, quux < 1, magda,
+                            -- Something without commas
+                            base
+          """
       }
 
 caseDependenciesOnTheSameLine :: TestTree
@@ -1305,25 +1305,25 @@ caseDependenciesOnTheSameLine =
       , catArgs = ["baz ^>= 2.0", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   magda, base
-|]
+          executable dagda
+            build-depends:   magda, base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   baz ^>= 2.0, quux < 1, magda, base
-|]
+          executable dagda
+            build-depends:   baz ^>= 2.0, quux < 1, magda, base
+          """
       }
 
 caseIgnoreAddArgument :: TestTree
@@ -1334,25 +1334,25 @@ caseIgnoreAddArgument =
       , catArgs = ["add", "baz ^>= 2.0", "quux < 1"]
       , catEnv = [("CABAL", "/fake/usr/bin/local/cabal")]
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   magda, base
-|]
+          executable dagda
+            build-depends:   magda, base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   baz ^>= 2.0, quux < 1, magda, base
-|]
+          executable dagda
+            build-depends:   baz ^>= 2.0, quux < 1, magda, base
+          """
       }
 
 caseDoNotIgnoreAddArgument :: TestTree
@@ -1363,25 +1363,25 @@ caseDoNotIgnoreAddArgument =
       , catArgs = ["baz ^>= 2.0", "add", "quux < 1"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   magda, base
-|]
+          executable dagda
+            build-depends:   magda, base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   baz ^>= 2.0, add, quux < 1, magda, base
-|]
+          executable dagda
+            build-depends:   baz ^>= 2.0, add, quux < 1, magda, base
+          """
       }
 
 caseSublibraryDependency :: TestTree
@@ -1392,25 +1392,25 @@ caseSublibraryDependency =
       , catArgs = ["foo:bar"]
       , catEnv = mempty
       , catInput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   magda, base
-|]
+          executable dagda
+            build-depends:   magda, base
+          """
       , catOutput =
-          [s|
-cabal-version: 3.6
-name:          dummy
-version:       0.1
-build-type:    Simple
+          """
+          cabal-version: 3.6
+          name:          dummy
+          version:       0.1
+          build-type:    Simple
 
-executable dagda
-  build-depends:   foo:bar, magda, base
-|]
+          executable dagda
+            build-depends:   foo:bar, magda, base
+          """
       }
 
 caseSpecialDependencyName1 :: TestTree
@@ -1421,28 +1421,28 @@ caseSpecialDependencyName1 =
       , catArgs = ["add"]
       , catEnv = mempty
       , catInput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+          """
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    add,
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              add,
+              base >=4.15 && <5
+          """
       }
 
 main :: IO ()

@@ -1,7 +1,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultilineStrings #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -13,7 +13,6 @@ import Data.Algorithm.Diff (Diff, PolyDiff (..), getDiff)
 import Data.ByteString.Char8 qualified as B
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
-import Data.String.QQ (s)
 import Distribution.Client.Add (AddConfig (..), TargetField (..), executeAddConfig, parseCabalFile)
 import Distribution.Client.Rename (RenameConfig (..), executeRenameConfig)
 import Distribution.Fields.Field (Field)
@@ -79,31 +78,31 @@ caseMultipleBuildDependencies1 =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    foo < 1 && >0.7,
-    baz ^>= 2.0,
-    base >=4.15 && <5
-|]
+          library
+            build-depends:
+              foo < 1 && >0.7,
+              baz ^>= 2.0,
+              base >=4.15 && <5
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+      """
 
 caseMultipleExposedModules1 :: TestTree
 caseMultipleExposedModules1 =
@@ -119,31 +118,31 @@ caseMultipleExposedModules1 =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2, Main, OtherModule.Mine
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1, Test.Mod2, Main, OtherModule.Mine
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Main, OtherModule.Mine
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Main, OtherModule.Mine
+      """
 
 caseMultipleExposedModulesUsingSpaces :: TestTree
 caseMultipleExposedModulesUsingSpaces =
@@ -159,31 +158,31 @@ caseMultipleExposedModulesUsingSpaces =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1 Test.Mod2 Main OtherModule.Mine
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1 Test.Mod2 Main OtherModule.Mine
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Main OtherModule.Mine
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Main OtherModule.Mine
+      """
 
 caseMultipleOtherModules :: TestTree
 caseMultipleOtherModules =
@@ -199,45 +198,45 @@ caseMultipleOtherModules =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1 Test.Mod2
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:
-    Test.Mod1,
-    Mod3,
-    Dir.Mod1,
-    Dir.Mod2
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1 Test.Mod2
+          test-suite testss
+            main-is: Main.hs
+            type: exitcode-stdio-1.0
+            other-modules:
+              Test.Mod1,
+              Mod3,
+              Dir.Mod1,
+              Dir.Mod2
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1 Test.Mod2
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:
-    Dir.Mod1,
-    Dir.Mod2
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Test.Mod1 Test.Mod2
+      test-suite testss
+        main-is: Main.hs
+        type: exitcode-stdio-1.0
+        other-modules:
+          Dir.Mod1,
+          Dir.Mod2
+      """
 
 caseMultipleOtherModulesUsingSpaces :: TestTree
 caseMultipleOtherModulesUsingSpaces =
@@ -253,47 +252,47 @@ caseMultipleOtherModulesUsingSpaces =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:
-    Test.Mod1
-    Mod3
-    Dir.Mod1
-    Dir.Mod2
+          test-suite testss
+            main-is: Main.hs
+            type: exitcode-stdio-1.0
+            other-modules:
+              Test.Mod1
+              Mod3
+              Dir.Mod1
+              Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1, Test.Mod2
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:
-    Dir.Mod1
-    Dir.Mod2
+      test-suite testss
+        main-is: Main.hs
+        type: exitcode-stdio-1.0
+        other-modules:
+          Dir.Mod1
+          Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Test.Mod1, Test.Mod2
+      """
 
 caseMultipleOtherModulesUsingLeadingCommas :: TestTree
 caseMultipleOtherModulesUsingLeadingCommas =
@@ -309,45 +308,45 @@ caseMultipleOtherModulesUsingLeadingCommas =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:  Test.Mod1
-                , Mod3
-                , Dir.Mod1
-                , Dir.Mod2
+          test-suite testss
+            main-is: Main.hs
+            type: exitcode-stdio-1.0
+            other-modules:  Test.Mod1
+                          , Mod3
+                          , Dir.Mod1
+                          , Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1, Test.Mod2
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:  Dir.Mod1
-                , Dir.Mod2
+      test-suite testss
+        main-is: Main.hs
+        type: exitcode-stdio-1.0
+        other-modules:  Dir.Mod1
+                      , Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Test.Mod1, Test.Mod2
+      """
 
 caseMultipleOtherModulesUsingLeadingSpaces :: TestTree
 caseMultipleOtherModulesUsingLeadingSpaces =
@@ -363,45 +362,45 @@ caseMultipleOtherModulesUsingLeadingSpaces =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:  Test.Mod1
-                  Mod3
-                  Dir.Mod1
-                  Dir.Mod2
+          test-suite testss
+            main-is: Main.hs
+            type: exitcode-stdio-1.0
+            other-modules:  Test.Mod1
+                            Mod3
+                            Dir.Mod1
+                            Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+          library
+            build-depends:
+              base >=4.15 && <5
+            exposed-modules: Test.Mod1, Test.Mod2
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-test-suite testss
-  main-is: Main.hs
-  type: exitcode-stdio-1.0
-  other-modules:  Dir.Mod1
-                  Dir.Mod2
+      test-suite testss
+        main-is: Main.hs
+        type: exitcode-stdio-1.0
+        other-modules:  Dir.Mod1
+                        Dir.Mod2
 
-library
-  build-depends:
-    base >=4.15 && <5
-  exposed-modules: Test.Mod1, Test.Mod2
-|]
+      library
+        build-depends:
+          base >=4.15 && <5
+        exposed-modules: Test.Mod1, Test.Mod2
+      """
 
 caseMultipleOtherModulesWithImportFields :: TestTree
 caseMultipleOtherModulesWithImportFields =
@@ -417,40 +416,40 @@ caseMultipleOtherModulesWithImportFields =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
-  other-modules: Other
+          common foo
+            build-depends: bar
+            other-modules: Other
 
-library
-  import: foo
-  other-modules: This.Dir.Mod1, Mod3
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+          library
+            import: foo
+            other-modules: This.Dir.Mod1, Mod3
+            build-depends: foo < 1 && >0.7, quux < 1
+            exposed-modules: Foo
+          """
       }
   where
     inContents =
-      [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+      """
+      cabal-version: 2.2
+      name:          dummy
+      version:       0.13.0.0
+      build-type:    Simple
 
-common foo
-  build-depends: bar
-  other-modules: Other
+      common foo
+        build-depends: bar
+        other-modules: Other
 
-library
-  import: foo
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+      library
+        import: foo
+        build-depends: foo < 1 && >0.7, quux < 1
+        exposed-modules: Foo
+      """
 
 caseMultipleOtherModulesWithImportFields2 :: TestTree
 caseMultipleOtherModulesWithImportFields2 =
@@ -466,40 +465,40 @@ caseMultipleOtherModulesWithImportFields2 =
             , cnfOrigContents = inContents
             }
       , catOutput =
-          [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+          """
+          cabal-version: 2.2
+          name:          dummy
+          version:       0.13.0.0
+          build-type:    Simple
 
-common foo
-  build-depends: bar
-  other-modules: Other
+          common foo
+            build-depends: bar
+            other-modules: Other
 
-library
-  Import: foo
-  other-modules: This.Dir.Mod1, Mod3
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+          library
+            Import: foo
+            other-modules: This.Dir.Mod1, Mod3
+            build-depends: foo < 1 && >0.7, quux < 1
+            exposed-modules: Foo
+          """
       }
   where
     inContents =
-      [s|
-cabal-version: 2.2
-name:          dummy
-version:       0.13.0.0
-build-type:    Simple
+      """
+      cabal-version: 2.2
+      name:          dummy
+      version:       0.13.0.0
+      build-type:    Simple
 
-common foo
-  build-depends: bar
-  other-modules: Other
+      common foo
+        build-depends: bar
+        other-modules: Other
 
-library
-  Import: foo
-  build-depends: foo < 1 && >0.7, quux < 1
-  exposed-modules: Foo
-|]
+      library
+        Import: foo
+        build-depends: foo < 1 && >0.7, quux < 1
+        exposed-modules: Foo
+      """
 
 caseRenameDependency1 :: TestTree
 caseRenameDependency1 =
@@ -516,43 +515,43 @@ caseRenameDependency1 =
             , cnfRenameTo = "relude"
             }
       , crtOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    relude >=4.15 && <5,
-    base-foo,
-    foo-base
+          library
+            build-depends:
+              relude >=4.15 && <5,
+              base-foo,
+              foo-base
 
-benchmark foo
-  type: exitcode-stdio-1.0
-  main-is: Main
-  build-depends: base
-|]
+          benchmark foo
+            type: exitcode-stdio-1.0
+            main-is: Main
+            build-depends: base
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base >=4.15 && <5,
-    base-foo,
-    foo-base
+      library
+        build-depends:
+          base >=4.15 && <5,
+          base-foo,
+          foo-base
 
-benchmark foo
-  type: exitcode-stdio-1.0
-  main-is: Main
-  build-depends: base
-|]
+      benchmark foo
+        type: exitcode-stdio-1.0
+        main-is: Main
+        build-depends: base
+      """
 
 caseRenameDependency2 :: TestTree
 caseRenameDependency2 =
@@ -569,29 +568,29 @@ caseRenameDependency2 =
             , cnfRenameTo = "relude"
             }
       , crtOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  build-depends:
-    relude>=4, relude<4, relude==4.9.0.0, relude^>=4.0, relude(>4 && <5)
-|]
+          library
+            build-depends:
+              relude>=4, relude<4, relude==4.9.0.0, relude^>=4.0, relude(>4 && <5)
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  build-depends:
-    base>=4, base<4, base==4.9.0.0, base^>=4.0, base(>4 && <5)
-|]
+      library
+        build-depends:
+          base>=4, base<4, base==4.9.0.0, base^>=4.0, base(>4 && <5)
+      """
 
 caseRenameExposedModule1 :: TestTree
 caseRenameExposedModule1 =
@@ -608,37 +607,37 @@ caseRenameExposedModule1 =
             , cnfRenameTo = "Data.Quux"
             }
       , crtOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  exposed-modules: Data.Quux, Data.Foo.Bar, Data.Foo.Baz
+          library
+            exposed-modules: Data.Quux, Data.Foo.Bar, Data.Foo.Baz
 
-benchmark foo
-  type: exitcode-stdio-1.0
-  main-is: Main
-  exposed-modules: Data.Foo
-|]
+          benchmark foo
+            type: exitcode-stdio-1.0
+            main-is: Main
+            exposed-modules: Data.Foo
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  exposed-modules: Data.Foo, Data.Foo.Bar, Data.Foo.Baz
+      library
+        exposed-modules: Data.Foo, Data.Foo.Bar, Data.Foo.Baz
 
-benchmark foo
-  type: exitcode-stdio-1.0
-  main-is: Main
-  exposed-modules: Data.Foo
-|]
+      benchmark foo
+        type: exitcode-stdio-1.0
+        main-is: Main
+        exposed-modules: Data.Foo
+      """
 
 caseRenameExposedModule2 :: TestTree
 caseRenameExposedModule2 =
@@ -655,33 +654,33 @@ caseRenameExposedModule2 =
             , cnfRenameTo = "Data.Quux"
             }
       , crtOutput =
-          [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+          """
+          name:          dummy
+          version:       0.13.0.0
+          cabal-version: 2.0
+          build-type:    Simple
 
-library
-  exposed-modules:
-    -- Data.Foo as a comment
-    Data.Quux
-    -- Data.Foo again
-|]
+          library
+            exposed-modules:
+              -- Data.Foo as a comment
+              Data.Quux
+              -- Data.Foo again
+          """
       }
   where
     inContents =
-      [s|
-name:          dummy
-version:       0.13.0.0
-cabal-version: 2.0
-build-type:    Simple
+      """
+      name:          dummy
+      version:       0.13.0.0
+      cabal-version: 2.0
+      build-type:    Simple
 
-library
-  exposed-modules:
-    -- Data.Foo as a comment
-    Data.Foo
-    -- Data.Foo again
-|]
+      library
+        exposed-modules:
+          -- Data.Foo as a comment
+          Data.Foo
+          -- Data.Foo again
+      """
 
 prettyDiff :: [Diff String] -> String
 prettyDiff =
