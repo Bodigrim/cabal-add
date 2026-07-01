@@ -1,33 +1,50 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 -- |
 -- Copyright:   (c) 2023 Bodigrim
 -- License:     BSD-3-Clause
 module Main (main) where
 
-import Cabal.Project (parseProject, prjPackages, resolveProject)
 import Control.Exception (throwIO)
 import Control.Monad (filterM)
+import Control.Monad.IO.Class (liftIO)
 import Data.Bifunctor (bimap)
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as B
 import Data.Either (partitionEithers)
 import Data.List qualified as L
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (catMaybes, isJust)
+import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Client.Add
+import Distribution.Client.DistDirLayout (
+  defaultDistDirLayout,
+  distProjectRootDirectory,
+ )
+import Distribution.Client.HttpUtils (configureTransport)
+import Distribution.Client.ProjectConfig (
+  ProjectPackageLocation (..),
+  findProjectPackages,
+  findProjectRoot,
+  readProjectConfig,
+ )
+import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.PackageDescription (
   ComponentName,
   GenericPackageDescription,
+  ignoreConditions,
   packageDescription,
   specVersion,
  )
 import Distribution.PackageDescription.Quirks (patchQuirks)
+import Distribution.Verbosity qualified as Verbosity
 import Options.Applicative (
   Parser,
   execParser,
@@ -46,7 +63,11 @@ import Options.Applicative.NonEmpty (some1)
 import System.Directory (doesFileExist, listDirectory)
 import System.Environment (getArgs, lookupEnv, withArgs)
 import System.Exit (die)
-import System.FilePath (takeDirectory, (</>))
+import System.FilePath (splitFileName, (</>))
+
+#if MIN_VERSION_Cabal(3,17,0)
+import Distribution.Client.ProjectConfig (ProjectFileParser(..))
+#endif
 
 data RawConfig = RawConfig
   { rcnfMProjectFile :: !(Maybe FilePath)
@@ -94,14 +115,49 @@ resolveCabalFileInCurrentFolder = do
 
 extractCabalFilesFromProject :: FilePath -> IO [FilePath]
 extractCabalFilesFromProject projectFn = do
-  project <- B.readFile projectFn
-  parsed <- case parseProject projectFn project of
+  let (projectDir, projectFile) = splitFileName projectFn
+  mProjectRoot <- findProjectRoot silent (Just projectDir) (Just projectFile)
+  case mProjectRoot of
     Left exc -> throwIO exc
-    Right p -> pure p
-  resolved <- resolveProject projectFn parsed
-  case resolved of
-    Left exc -> throwIO exc
-    Right prj -> pure $ map (takeDirectory projectFn </>) $ prjPackages prj
+    Right projectRoot -> do
+      let dirLayout = defaultDistDirLayout projectRoot Nothing Nothing
+          rootDirectory = distProjectRootDirectory dirLayout
+      runRebuild rootDirectory $ do
+        httpTransport <- liftIO $ configureTransport silent [] Nothing
+        skeleton <- readProjectConfigSilently httpTransport mempty mempty dirLayout
+        let projectConfig = fromSkeleton skeleton
+        packages <- findProjectPackages dirLayout projectConfig
+        pure $ map (rootDirectory </>) $ mapMaybe extractCabalFileFromProjectPackageLocation packages
+
+#if MIN_VERSION_Cabal(3,17,0)
+silent :: Verbosity.Verbosity
+silent = Verbosity.Verbosity { verbosityFlags = Verbosity.silent, verbosityHandles = Verbosity.defaultVerbosityHandles }
+#else
+silent :: Verbosity.Verbosity
+silent = Verbosity.silent
+#endif
+
+#if MIN_VERSION_Cabal(3,17,0)
+readProjectConfigSilently :: _
+readProjectConfigSilently = readProjectConfig silent ParsecParser
+#else
+readProjectConfigSilently :: _
+readProjectConfigSilently = readProjectConfig silent
+#endif
+
+#if MIN_VERSION_Cabal(3,17,0)
+fromSkeleton :: _
+fromSkeleton = snd . ignoreConditions
+#else
+fromSkeleton :: _
+fromSkeleton = fst . ignoreConditions
+#endif
+
+extractCabalFileFromProjectPackageLocation :: ProjectPackageLocation -> Maybe FilePath
+extractCabalFileFromProjectPackageLocation = \case
+  ProjectPackageLocalCabalFile fn -> Just fn
+  ProjectPackageLocalDirectory _dn fn -> Just fn
+  _ -> Nothing
 
 resolveCabalFiles :: Maybe FilePath -> IO [FilePath]
 resolveCabalFiles = \case

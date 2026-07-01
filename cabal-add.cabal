@@ -38,8 +38,8 @@ library
     build-depends:
         base <5,
         bytestring <0.13,
-        Cabal >=3.8 && <3.17,
-        Cabal-syntax >=3.8 && <3.17,
+        Cabal >=3.8 && <3.19,
+        Cabal-syntax >=3.8 && <3.19,
         containers <0.9,
         mtl <2.4
 
@@ -52,7 +52,8 @@ executable cabal-add
         base <5,
         bytestring <0.13,
         cabal-add,
-        cabal-install-parsers >=0.4.1 && <0.7,
+        Cabal,
+        cabal-install >=3.12 && <3.19,
         Cabal-syntax,
         directory <1.4,
         filepath <1.6,
