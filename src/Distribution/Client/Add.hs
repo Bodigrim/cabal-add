@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -68,6 +69,10 @@ import Distribution.Simple.BuildTarget (
   readUserBuildTargets,
   resolveBuildTargets,
  )
+
+#if MIN_VERSION_Cabal_syntax(3,17,0)
+import Distribution.Fields (perror)
+#endif
 
 -- | An input for 'executeAddConfig'.
 data AddConfig = AddConfig
@@ -229,12 +234,18 @@ parseCabalFile fileName contents = do
 
   packDescr <- case snd $ runParseResult $ parseGenericPackageDescription contents of
     Left (_, err) ->
-      errorWithCtx $ L.unlines $ map (showPError fileName) $ NE.toList err
+      errorWithCtx $ L.unlines $ map (showPError fileName . toPError) $ NE.toList err
     Right GenericPackageDescription {packageDescription = PackageDescription {specVersion = CabalSpecV1_0}} ->
       errorWithCtx legacyErr
     Right pd -> pure pd
 
   pure (fields, packDescr)
+  where
+#if MIN_VERSION_Cabal_syntax(3,17,0)
+    toPError = perror
+#else
+    toPError = id
+#endif
 
 readBuildTarget :: PackageDescription -> String -> Maybe ComponentName
 readBuildTarget pkg targetStr =
