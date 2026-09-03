@@ -78,16 +78,16 @@ data RawConfig = RawConfig
 parseRawConfig :: Parser RawConfig
 parseRawConfig = do
   rcnfMProjectFile <-
-    optional $
-      strOption $
-        long "project-file"
-          <> metavar "FILE"
-          <> help "Set the path of the cabal.project file. Detect cabal.project or *.cabal in the current folder, if omitted."
+    optional
+      $ strOption
+      $ long "project-file"
+        <> metavar "FILE"
+        <> help "Set the path of the cabal.project file. Detect cabal.project or *.cabal in the current folder, if omitted."
   rcnfArgs <-
-    some1 $
-      strArgument $
-        metavar "ARGS"
-          <> help "Optional package component (wildcards such as 'exe', 'test' or 'bench' are supported) to update, followed by a non-empty list of package(s) to add to 'build-depends' section. Version bounds can be provided as well, use quotes to escape comparisons from your shell. E. g., 'foo < 0.2'."
+    some1
+      $ strArgument
+      $ metavar "ARGS"
+        <> help "Optional package component (wildcards such as 'exe', 'test' or 'bench' are supported) to update, followed by a non-empty list of package(s) to add to 'build-depends' section. Version bounds can be provided as well, use quotes to escape comparisons from your shell. E. g., 'foo < 0.2'."
   pure RawConfig {..}
 
 resolveCabalProjectInCurrentFolder :: IO (Maybe FilePath)
@@ -242,9 +242,9 @@ disambiguateInputs mProjectFile inputs = case inputs' of
     Nothing -> "No Cabal files or projects are found in the current folder, please specify --project-file."
     Just projFn -> "No Cabal files are found in " ++ projFn
   (errs, []) ->
-    Left $
-      L.intercalate "\n" $
-        map (\(fn, err) -> "Cannot add a dependency to " ++ fn ++ " because: " ++ err) errs
+    Left
+      $ L.intercalate "\n"
+      $ map (\(fn, err) -> "Cannot add a dependency to " ++ fn ++ " because: " ++ err) errs
   (_, [inp]) -> pure $ snd inp
   (_, _inps) ->
     Left
@@ -257,11 +257,11 @@ main = do
   isCabalEnvVarSet <- isJust <$> lookupEnv "CABAL"
   rawArgs <- getArgs
   RawConfig {..} <-
-    withArgs ((if isCabalEnvVarSet then stripAdd else id) rawArgs) $
-      execParser $
-        info
-          (helper <*> parseRawConfig)
-          (fullDesc <> progDesc "Extend build-depends from the command line")
+    withArgs ((if isCabalEnvVarSet then stripAdd else id) rawArgs)
+      $ execParser
+      $ info
+        (helper <*> parseRawConfig)
+        (fullDesc <> progDesc "Extend build-depends from the command line")
 
   cabalFiles <- resolveCabalFiles rcnfMProjectFile
   cabalFilesAndContent <-
