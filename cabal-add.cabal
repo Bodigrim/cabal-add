@@ -51,7 +51,7 @@ executable cabal-add
         base <5,
         bytestring <0.13,
         cabal-add,
-        cabal-install-parsers >=0.4.1 && <0.7,
+        cabal-install-parsers >=0.4.1 && <0.8,
         Cabal-syntax,
         directory <1.4,
         filepath <1.6,
